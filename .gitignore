@@ -1,0 +1,8 @@
+__pycache__/
+https/
+nodes/config.json
+workflow/my_workflow.json
+workflow/my_workflow_app.json
+workflow/prompt_result.json
+app/*
+workflow/prompt_result.json
