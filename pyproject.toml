@@ -1,15 +1,49 @@
 [project]
-name = "comfyui-mixlab-nodes"
-description = "3D, ScreenShareNode & FloatingVideoNode, SpeechRecognition & SpeechSynthesis, GPT, LoadImagesFromLocal, Layers, Other Nodes, ..."
-version = "0.46.0"
+name = "ComfyUI-8iPlayer"
+description = "A ComfyUI custom node for interactive 8i volumetric video playback and frame capture."
+version = "0.1.0"
 license = "MIT"
-dependencies = ["numpy", "pyOpenSSL", "watchdog", "opencv-python-headless", "matplotlib", "openai", "simple-lama-inpainting", "clip-interrogator==0.6.0", "transformers>=4.36.0", "lark-parser", "imageio-ffmpeg", "rembg[gpu]", "omegaconf==2.3.0", "Pillow>=9.5.0", "einops==0.7.0", "trimesh>=4.0.5", "huggingface-hub", "scikit-image"]
+authors = [
+    { name = "LOVIS ODIN", email = "" },
+]
+maintainers = [
+    { name = "Kartel.IAI", email = "" }
+]
+dependencies = [
+    "numpy",
+    "pyOpenSSL",
+    "watchdog",
+    "opencv-python-headless",
+    "Pillow>=9.5.0",
+    "trimesh>=4.0.5",
+    "scikit-image",
+    "aiohttp",
+    "clip-interrogator==0.6.0",
+    "transformers>=4.36.0",
+    "lark-parser",
+    "imageio-ffmpeg",
+    "rembg[gpu]",
+    "omegaconf>=2.3.0",
+    "einops>=0.7.0",
+    "huggingface-hub",
+    "soundfile>=0.12.1",
+    "json-repair",
+    "bitsandbytes",
+    "accelerate",
+    "scenedetect[opencv-headless]",
+    "hydra-core>=1.3.2",
+    "loralib>=0.1.2",
+    "natsort>=8.4.0",
+    "git+https://github.com/shadowcz007/SenseVoice-python.git",
+    "faster_whisper",
+    "git+https://github.com/openai/swarm.git"
+]
 
 [project.urls]
-Repository = "https://github.com/shadowcz007/comfyui-mixlab-nodes"
+Repository = "https://github.com/Kartel-IAI/ComfyUI-8iPlayer"
 #  Used by Comfy Registry https://comfyregistry.org
 
 [tool.comfy]
-PublisherId = "shadow"
-DisplayName = "comfyui-mixlab-nodes"
+PublisherId = "Kartel.IAI"
+DisplayName = "ComfyUI-8iPlayer"
 Icon = ""

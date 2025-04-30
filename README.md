@@ -21,9 +21,9 @@ A custom node for ComfyUI that provides an interactive 3D viewer for 8i volumetr
     ```bash
     cd ComfyUI/custom_nodes/
     ```
-2.  Clone this repository:
+2.  Clone this repository (from its new location under Kartel.IAI):
     ```bash
-    git clone [Your Repository URL Here] ComfyUI-8iPlayer
+    git clone https://github.com/Kartel-IAI/ComfyUI-8iPlayer.git ComfyUI-8iPlayer
     ```
 3.  Install the required Python dependencies:
     ```bash
@@ -110,9 +110,13 @@ Here are some examples demonstrating how to use the 8i Player node:
 
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
+## Author
+
+This project was originally created by **LOVIS ODIN**.
+
 ## License
 
-[MIT License](LICENSE) (Or choose another and update)
+[MIT License](LICENSE)
 
 ## Acknowledgements
 
@@ -120,6 +124,7 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 *   Utilizes **Three.js** (MIT License).
 *   Integrates **8i DashPlayer** technology.
 *   **RGBELoader** based on original Three.js examples.
+*   The web viewer interface and workflow-to-app concepts draw inspiration from and build upon the excellent work in [**comfyui-mixlab-nodes**](https://github.com/shadowcz007/comfyui-mixlab-nodes) by shadowcz007.
 
 ## Support
 
