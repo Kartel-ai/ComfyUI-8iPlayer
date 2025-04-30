@@ -1,5 +1,7 @@
 # ✨ ComfyUI-8iPlayer ✨
 
+Developed for [**Kartel.IAI**](https://Kartel.IAI) (with a K!)
+
 A custom node for ComfyUI providing an interactive 3D viewer for 8i volumetric videos (MPD format), allowing frame capture and integration into workflows.
 
 **(🎬 Placeholder: Add a GIF/screenshot showing the node in action)**
@@ -14,7 +16,6 @@ A custom node for ComfyUI providing an interactive 3D viewer for 8i volumetric v
 *   **🎨 Customizable Background:** Use solid colors or HDR environment maps (via URL).
 *   **🧊 Toggleable Floor:** Add an optional ground plane.
 *   **☀️ Toggleable Shadows:** Cast shadows onto the floor (requires floor).
-*   **🖱️ Integrated Workflow Triggering:** Camera interaction marks the node for execution.
 *   **📦 Outputs:** Provides captured frames as an `IMAGE` batch.
 
 ---
@@ -44,18 +45,11 @@ This node heavily utilizes and adapts code from the excellent [**comfyui-mixlab-
 
 ---
 
-## 🔗 Dependencies
-
-*   Python requirements: See `requirements.txt`.
-*   Browser: Requires WebGL support.
-
----
-
 ## 🎮 How to Use
 
 1.  Add the **"8i - 3Dplayer"** node to your workflow.
 2.  Paste the 8i `.mpd` manifest URL into the node's panel.
-    *   ***💡 Tip:*** Get MPD URLs from the official [8i Web Player](https://player4-dev.8i.com/). Look for share/debug options to find the manifest URL. (Placeholder: GIF coming soon!).
+    *   You can obtain the MPD URL directly from the official [8i Web Player](https://player4-dev.8i.com/). Click the dedicated button on the player interface to copy the manifest URL. (The exact steps will be shown in the GIF below this section).
 3.  Click **"Load MPD"**. The hologram should appear.
 4.  Use the **panel controls** to adjust:
     *   Background (Color Picker / HDR URL + Load Button)
@@ -118,6 +112,15 @@ This node heavily utilizes and adapts code from the excellent [**comfyui-mixlab-
 ## 🤝 Contributing
 
 Pull requests are welcome! For major changes, please open an issue first to discuss.
+
+---
+
+## 🔮 Future Enhancements
+
+We plan to add more features, including:
+
+*   **🎥 Advanced Camera Controls:** More options for defining camera movements and paths.
+*   **🧩 Enhanced Customization:** Support for adding multiple characters/holograms, importing custom environments or objects (e.g., GLB files).
 
 ---
 
