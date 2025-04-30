@@ -1,7 +1,7 @@
 # ✨ ComfyUI-8iPlayer ✨
 
 Developed for [**Kartel.IAI**](https://Kartel.IAI) (with a K!)
-[![Kartel.IAI Logo](assets/kartellogo.avif)](https://Kartel.IAI)
+<a href="https://Kartel.IAI"><img src="assets/kartellogo.avif" alt="Kartel.IAI Logo" width="100"></a>
 
 A custom node for ComfyUI providing an interactive 3D viewer for 8i volumetric videos (MPD format), allowing frame capture and integration into workflows.
 
@@ -55,6 +55,15 @@ This node heavily utilizes and adapts code from the excellent [**comfyui-mixlab-
 3.  Click **"Load MPD"**. The hologram should appear.
 4.  Use the **panel controls** to adjust:
     *   Background (Color Picker / HDR URL + Load Button)
+        *   ***Example HDR URLs:*** You can try these links:
+            ```
+            https://lovis.io/RESSOURCE/HDR/01.hdr
+            https://lovis.io/RESSOURCE/HDR/02.hdr
+            https://lovis.io/RESSOURCE/HDR/03.hdr
+            https://lovis.io/RESSOURCE/HDR/04.hdr
+            https://lovis.io/RESSOURCE/HDR/05.hdr
+            https://lovis.io/RESSOURCE/HDR/06.hdr
+            ```
     *   Floor (Toggle Button / Color Picker)
     *   Shadows (Toggle Button)
     *   Playback (Play/Pause Button)
@@ -136,7 +145,7 @@ We plan to add more features, including:
 
 ## 👤 Author
 
-Originally created by **Lovis Odin**.
+Originally created by [**Lovis Odin**](https://x.com/OdinLovis).
 
 ---
 
