@@ -1,6 +1,7 @@
 # ✨ ComfyUI-8iPlayer ✨
 
-Developed for [**Kartel.IAI**](https://Kartel.IAI) (with a K!)
+Developed for [**Kartel.ai**](https://Kartel.ai) by [Lovis Odin](https://x.com/OdinLovis)
+
 <a href="https://Kartel.IAI"><img src="assets/kartellogo.avif" alt="Kartel.IAI Logo" width="100"></a>
 
 A custom node for ComfyUI providing an interactive 3D viewer for 8i volumetric videos (MPD format), allowing frame capture and integration into workflows.
