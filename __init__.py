@@ -246,13 +246,12 @@ def mix_status(request):
     return web.Response(text="running#"+_URL_)
 
 # 导入节点
-from .nodes.ImageNode import Image3D, DepthViewer_
+from .nodes.ImageNode import Image3D
 
 # 要导出的所有节点及其名称的字典
 NODE_CLASS_MAPPINGS = {
     # 3D
     "3DImage": Image3D,
-    "DepthViewer": DepthViewer_,
 }
 
 # 一个包含节点友好/可读的标题的字典

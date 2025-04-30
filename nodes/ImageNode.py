@@ -1815,6 +1815,13 @@ class Image3D:
     def INPUT_TYPES(s):
         return {"required": { 
                     "upload":("THREED",),
+                    "frame_count": ("INT", {  # Ajout du widget
+                        "default": 24, 
+                        "min": 1, 
+                        "max": 120, 
+                        "step": 1,
+                        "display": "number" 
+                    }),
                 }
                 }
     
@@ -1829,7 +1836,7 @@ class Image3D:
     OUTPUT_IS_LIST = (False,)
     OUTPUT_NODE = True
 
-    def run(self,upload):
+    def run(self, upload, frame_count): # Ajout de frame_count à la signature
         # 截取的系列角度截图
         images=upload['images'] if "images" in upload else []
 

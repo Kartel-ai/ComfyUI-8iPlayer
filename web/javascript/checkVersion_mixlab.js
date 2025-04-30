@@ -1,4 +1,4 @@
-import { app } from '../../../scripts/app.js'
+import { app } from '/scripts/app.js'
 
 const repoOwner = 'shadowcz007' // 替换为仓库的所有者
 const repoName = 'comfyui-mixlab-nodes' // 替换为仓库的名称
