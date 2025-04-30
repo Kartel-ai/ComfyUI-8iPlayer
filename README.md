@@ -1,10 +1,11 @@
 # ✨ ComfyUI-8iPlayer ✨
 
 Developed for [**Kartel.IAI**](https://Kartel.IAI) (with a K!)
+[![Kartel.IAI Logo](assets/kartellogo.avif)](https://Kartel.IAI)
 
 A custom node for ComfyUI providing an interactive 3D viewer for 8i volumetric videos (MPD format), allowing frame capture and integration into workflows.
 
-**(🎬 Placeholder: Add a GIF/screenshot showing the node in action)**
+![Node in Action](assets/fullnode.gif)
 
 ---
 
@@ -49,7 +50,8 @@ This node heavily utilizes and adapts code from the excellent [**comfyui-mixlab-
 
 1.  Add the **"8i - 3Dplayer"** node to your workflow.
 2.  Paste the 8i `.mpd` manifest URL into the node's panel.
-    *   You can obtain the MPD URL directly from the official [8i Web Player](https://player4-dev.8i.com/). Click the dedicated button on the player interface to copy the manifest URL. (The exact steps will be shown in the GIF below this section).
+    *   You can obtain the MPD URL directly from the official [8i Web Player](https://player4-dev.8i.com/). Click the dedicated button on the player interface to copy the manifest URL.
+    *   ![How to get MPD URL](assets/8ikartel.gif)
 3.  Click **"Load MPD"**. The hologram should appear.
 4.  Use the **panel controls** to adjust:
     *   Background (Color Picker / HDR URL + Load Button)
@@ -81,11 +83,19 @@ This node heavily utilizes and adapts code from the excellent [**comfyui-mixlab-
 
 ## 🧪 Example Workflows
 
-**(🚧 Placeholders: Links/images to be added)**
+Download the example workflow JSON files from the [`workflow_examples`](./workflow_examples) directory.
 
-*   **Basic Capture:** `8i Player` -> `PreviewImage`
-*   **Image Enhancement:** `8i Player` -> `Your Favourite Upscaler/Filter Node` -> `PreviewImage`
-*   **Video Input:** `8i Player` -> (Feed frames into) `AnimateDiff / SVD / etc.`
+*   **FLUX Enhancement:** Takes captured frames and uses the FLUX model for realism.
+    *   Workflow File: [`workflow-8i-flux-v01.json`](./workflow_examples/workflow-8i-flux-v01.json)
+    *   ![FLUX Workflow Example](assets/workflow-flux.png)
+
+*   **Wan 1.3b Basic Video:** Uses captured frames with the Wan 1.3b model.
+    *   Workflow File: [`workflow-8i-wan-fun-1.3b-v01.json`](./workflow_examples/workflow-8i-wan-fun-1.3b-v01.json)
+    *   ![Wan Workflow Example](assets/workflow-wan.gif)
+
+*   **Wan 1.3b + ChatGPT:** Extends the Wan workflow with ChatGPT for prompt generation or other tasks.
+    *   Workflow File: [`workflow-8i-wan-fun-1.3b-ChatGpt-v01.json`](./workflow_examples/workflow-8i-wan-fun-1.3b-ChatGpt-v01.json)
+    *   ![Wan+ChatGPT Workflow Example](assets/workflow-wan-chatgpt.gif)
 
 ---
 
