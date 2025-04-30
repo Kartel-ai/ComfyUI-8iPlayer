@@ -4,7 +4,7 @@ description = "A ComfyUI custom node for interactive 8i volumetric video playbac
 version = "0.1.0"
 license = "MIT"
 authors = [
-    { name = "LOVIS ODIN", email = "" },
+    { name = "Lovis Odin", email = "" },
 ]
 maintainers = [
     { name = "Kartel.IAI", email = "" }
