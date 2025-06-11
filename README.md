@@ -19,7 +19,6 @@ A custom node for ComfyUI providing an interactive 3D viewer for 8i volumetric v
 *   **🧊 Toggleable Floor:** Add an optional ground plane.
 *   **☀️ Toggleable Shadows:** Cast shadows onto the floor (requires floor).
 *   **📦 Outputs:** Provides captured frames as an `IMAGE` batch.
-*   **🎥 Camera Animation:** Define a camera path using keyframes for animated captures.
 
 ---
 
@@ -73,16 +72,9 @@ This node heavily utilizes and adapts code from the excellent [**comfyui-mixlab-
     *   Left-drag: Orbit
     *   Right-drag: Pan
     *   Scroll: Zoom
-6.  **Animate the Camera (Optional):**
-    *   Position the camera to your desired starting point.
-    *   Click the green **"Add Keyframe"** button in the control bar.
-    *   Move the camera to the next position in your animation sequence.
-    *   Click **"Add Keyframe"** again.
-    *   Repeat this process to build a camera path. You need at least two keyframes to create an animation. The `(X Keyframes)` display will show you how many you've saved.
-    *   Click **"Clear"** to delete the entire path and start over.
-7.  Set the desired **`frame_count`** on the node input. This determines how many steps will be rendered along your animation path.
-8.  Connect the `IMAGE` output to the next node (e.g., VAE Encode, Preview Image).
-9.  Queue Prompt! ▶️ The node will now render frames along the camera path you defined.
+6.  Set the desired **`frame_count`** on the node input.
+7.  Connect the `IMAGE` output to the next node (e.g., VAE Encode, Preview Image).
+8.  Queue Prompt! ▶️ (Adjusting the camera view also triggers execution on the next run).
 
 ---
 
