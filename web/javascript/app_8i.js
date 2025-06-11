@@ -421,7 +421,7 @@ function getInputsAndOutputs () {
 }
 
 app.registerExtension({
-  name: 'Mixlab.utils.AppInfo',
+      name: '8i.utils.AppInfo',
   init () {
     // if (!window._nodesAll) {
     //   getObjectInfo().then(r => (window._nodesAll = r))

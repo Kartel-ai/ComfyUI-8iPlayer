@@ -174,7 +174,7 @@ async function load8iHologram(scene, renderer, camera, mpdUrl, opts = {}) {
 // UI and Widget Registration (unchanged)
 // ------------------------------
 app.registerExtension({
-  name: '8i.3D.3DImage',
+  name: 'Mixlab.3D.3DImage',
   async getCustomWidgets (app) {
     return {
       THREED (node, inputName, inputData, app) {
