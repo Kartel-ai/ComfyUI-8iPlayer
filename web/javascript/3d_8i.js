@@ -920,7 +920,7 @@ app.registerExtension({
                   </div>
                   <!-- Keyframe Controls -->
                   <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid #555; padding-left: 10px;">
-                    <span style="color: white; font-size: 14px; white-space: nowrap;">Animation:</span>
+                    <span style="color: white; font-size: 14px; white-space: nowrap;">Camera Animation:</span>
                     <button class="add-keyframe-button" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #4CAF50; color: white; font-size: 12px; cursor: pointer;">Add Keyframe</button>
                     <button class="preview-animation-button" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #FF9800; color: white; font-size: 12px; cursor: pointer;">Preview</button>
                     <button class="clear-keyframes-button" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #F44336; color: white; font-size: 12px; cursor: pointer;">Clear</button>

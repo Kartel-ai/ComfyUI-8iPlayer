@@ -14,10 +14,14 @@ A custom node for ComfyUI providing an interactive 3D viewer for 8i volumetric v
 
 *   **🖼️ Interactive 8i MPD Viewer:** Load and view 8i videos via URL.
 *   **🎞️ Frame Sequence Capture:** Grab frames from the video timeline.
-*   **⏯️ Playback Controls:** Basic play/pause functionality.
+*   **⏯️ Playback Controls:** Smart play/pause functionality with visual feedback.
+*   **🎥 Camera Animation System:** Record keyframes and create smooth camera animations between them.
+*   **👀 Animation Preview:** Preview camera movements before capture with smooth transitions.
 *   **🎨 Customizable Background:** Use solid colors or HDR environment maps (via URL).
 *   **🧊 Toggleable Floor:** Add an optional ground plane.
 *   **☀️ Toggleable Shadows:** Cast shadows onto the floor (requires floor).
+*   **🔄 Update Node:** Force ComfyUI recalculation with visual feedback.
+*   **⌨️ Enhanced Camera Controls:** Full 360° rotation, keyboard controls (WASD + QE), extended zoom range.
 *   **📦 Outputs:** Provides captured frames as an `IMAGE` batch.
 
 ---
@@ -68,13 +72,17 @@ This node heavily utilizes and adapts code from the excellent [**comfyui-mixlab-
     *   Floor (Toggle Button / Color Picker)
     *   Shadows (Toggle Button)
     *   Playback (Play/Pause Button)
-5.  Use the **mouse** for camera control:
-    *   Left-drag: Orbit
-    *   Right-drag: Pan
-    *   Scroll: Zoom
-6.  Set the desired **`frame_count`** on the node input.
-7.  Connect the `IMAGE` output to the next node (e.g., VAE Encode, Preview Image).
-8.  Queue Prompt! ▶️ (Adjusting the camera view also triggers execution on the next run).
+5.  Use **mouse and keyboard** for camera control:
+    *   **Mouse:** Left-drag: Orbit (unlimited 360°) | Right-drag: Pan | Scroll: Zoom (0.1-1000x range)
+    *   **Keyboard:** WASD: Move forward/backward/left/right | Q/E: Move up/down
+6.  **Camera Animation System:**
+    *   **Orange border** on play/pause button indicates camera keyframes are recorded
+    *   **Preview button:** Test camera animations with 3-second smooth transitions
+    *   Camera positions are automatically interpolated during frame capture
+7.  **Update Node button:** Purple button to force ComfyUI recalculation (turns green when clicked)
+8.  Set the desired **`frame_count`** on the node input.
+9.  Connect the `IMAGE` output to the next node (e.g., VAE Encode, Preview Image).
+10. Queue Prompt! ▶️ (Adjusting the camera view also triggers execution on the next run).
 
 ---
 
@@ -124,8 +132,10 @@ Download the example workflow JSON files from the [`workflow_examples`](./workfl
 
 *   **Frontend:** Built with Three.js.
 *   **MPD Playback:** Uses the 8i DashPlayer library.
-*   **Camera:** Three.js OrbitControls.
-*   **HDR Loading:** Three.js RGBELoader.
+*   **Camera:** Enhanced Three.js OrbitControls with unlimited rotation and keyboard support.
+*   **Animation System:** Linear interpolation between user-defined keyframes with smooth transitions.
+*   **Capture System:** Advanced frame capture with camera stabilization during recording.
+*   **HDR Loading:** Three.js RGBELoader with improved background color handling.
 
 ---
 
@@ -139,8 +149,8 @@ Pull requests are welcome! For major changes, please open an issue first to disc
 
 We plan to add more features, including:
 
-*   **🎥 Advanced Camera Controls:** More options for defining camera movements and paths.
 *   **🧩 Enhanced Customization:** Support for adding multiple characters/holograms, importing custom environments or objects (e.g., GLB files).
+*   **📊 Export Options:** Save camera animations as presets for reuse across projects.
 
 ---
 
