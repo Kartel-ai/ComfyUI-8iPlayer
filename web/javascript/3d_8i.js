@@ -883,54 +883,72 @@ app.registerExtension({
                   height: 100%;
                   display: block;
                 "></canvas>
+                <!-- Two-line Control Interface -->
                 <div class="controls" style="
                   position: absolute;
                   bottom: 0;
                   left: 0;
                   right: 0;
-                  background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.7));
-                  padding: 10px 16px;
-                  display: flex;
-                  justify-content: space-between;
-                  align-items: center;
-                  gap: 16px;
+                  background: linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.8));
+                  padding: 12px 16px;
+                  font-family: Arial, sans-serif;
                 ">
-                  <!-- Groupe Background (Couleur + HDR URL) -->
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="color: white; font-size: 14px; white-space: nowrap;">Background:</span>
-                    <input type="color" class="bg-color" value="#0A0A0A" style="width: 32px; height: 32px; border: none; border-radius: 4px; padding: 2px; background: #ffffff1a; cursor: pointer;">
-                    <input type="text" class="hdr-url-input" placeholder="Or enter HDR URL" style="height: 30px; flex-grow: 1; min-width: 150px; background-color: #333; color: white; border: 1px solid #555; border-radius: 3px; padding: 2px 6px; font-size: 12px;">
-                    <button class="load-hdr-url-button" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #2196F3; color: white; font-size: 12px; cursor: pointer;">Load URL</button>
+                  
+                  <!-- First Line: Visual & Environment Controls -->
+                  <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #444;">
+                    <!-- Background Controls -->
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span style="color: #FFF; font-size: 13px; font-weight: 500; white-space: nowrap;">Background:</span>
+                      <input type="color" class="bg-color" value="#0A0A0A" title="Set background color for the scene" style="width: 32px; height: 32px; border: 1px solid #666; border-radius: 4px; padding: 2px; background: #ffffff1a; cursor: pointer;">
+                      <input type="text" class="hdr-url-input" placeholder="HDR Environment URL (optional)" style="height: 30px; width: 180px; background-color: #333; color: white; border: 1px solid #555; border-radius: 3px; padding: 2px 6px; font-size: 11px;">
+                      <button class="load-hdr-url-button" title="Load HDR environment from URL" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #2196F3; color: white; font-size: 11px; cursor: pointer;">Load HDR</button>
+                    </div>
+                    
+                    <!-- Floor Controls -->
+                    <div style="display: flex; align-items: center; gap: 6px; border-left: 1px solid #555; padding-left: 12px;">
+                      <span style="color: #FFF; font-size: 13px; font-weight: 500; white-space: nowrap;">Floor:</span>
+                      <button class="toggle-floor-button" title="Toggle floor visibility on/off" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #607D8B; color: white; font-size: 11px; cursor: pointer;">Show/Hide</button>
+                      <input type="color" class="floor-color-input" value="#555555" title="Change floor color" style="width: 32px; height: 32px; border: 1px solid #666; border-radius: 4px; padding: 2px; background: #ffffff1a; cursor: pointer;">
+                    </div>
+                    
+                    <!-- Shadow Controls -->
+                    <div style="display: flex; align-items: center; gap: 6px; border-left: 1px solid #555; padding-left: 12px;">
+                      <span style="color: #FFF; font-size: 13px; font-weight: 500; white-space: nowrap;">Shadows:</span>
+                      <button class="toggle-shadows-button" title="Enable/disable shadow casting" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #607D8B; color: white; font-size: 11px; cursor: pointer;">On/Off</button>
+                    </div>
+                    
+                    <!-- Progress Display (hidden initially) -->
+                    <div class="capture-progress-display" style="display: none; color: #FFF; font-size: 12px; white-space: nowrap; margin-left: auto;">Starting...</div>
                   </div>
-                  <!-- Groupe Playback & Progress -->
-                  <div style="display: flex; align-items: center; gap: 10px;">
-                     <!-- Floor Controls -->
-                    <button class="toggle-floor-button" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #607D8B; color: white; font-size: 12px; cursor: pointer;">Toggle Floor</button>
-                    <input type="color" class="floor-color-input" value="#555555" title="Floor Color" style="width: 32px; height: 32px; border: none; border-radius: 4px; padding: 2px; background: #ffffff1a; cursor: pointer;">
-                    <!-- Shadow Toggle (ajouté ici pour regroupement) -->
-                    <button class="toggle-shadows-button" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #607D8B; color: white; font-size: 12px; cursor: pointer;">Toggle Shadows</button>
-
-                    <!-- Progress Display -->
-                    <div class="capture-progress-display" style="display: none; color: white; font-size: 12px; white-space: nowrap;">Starting...</div>
-                    <!-- Bouton Play/Pause -->
-                    <button class="playback-control" style="height: 32px; width: 32px; padding: 0; border: none; border-radius: 4px; background: #2196f3; color: white; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
-                      <svg class="play-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                      <svg class="pause-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="display: none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                    </button>
+                  
+                  <!-- Second Line: Animation & Control -->
+                  <div style="display: flex; align-items: center; gap: 15px;">
+                    <!-- Playback Controls -->
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span style="color: #FFF; font-size: 13px; font-weight: 500; white-space: nowrap;">Playback:</span>
+                      <button class="playback-control" title="Play/Pause video playback" style="height: 32px; width: 32px; padding: 0; border: 2px solid transparent; border-radius: 4px; background: #2196f3; color: white; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                        <svg class="play-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                        <svg class="pause-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="display: none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                      </button>
+                    </div>
+                    
+                    <!-- Camera Animation Controls -->
+                    <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid #555; padding-left: 12px;">
+                      <span style="color: #FFF; font-size: 13px; font-weight: 500; white-space: nowrap;">Camera Animation:</span>
+                      <button class="add-keyframe-button" title="Save current camera position as a keyframe" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #4CAF50; color: white; font-size: 11px; cursor: pointer;">+ Keyframe</button>
+                      <button class="preview-animation-button" title="Preview camera movement between keyframes" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #FF9800; color: white; font-size: 11px; cursor: pointer;">Preview</button>
+                      <button class="clear-keyframes-button" title="Remove all saved keyframes" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #F44336; color: white; font-size: 11px; cursor: pointer;">Clear All</button>
+                      <span class="keyframe-count-display" style="color: #DDD; font-size: 11px; white-space: nowrap;">(0 Keyframes)</span>
+                    </div>
+                    
+                    <!-- Node Update Control -->
+                    <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid #555; padding-left: 12px;">
+                      <span style="color: #FFF; font-size: 13px; font-weight: 500; white-space: nowrap;">Node:</span>
+                      <button class="force-node-update-button" title="Force ComfyUI to recalculate this node" style="height: 32px; padding: 0 12px; border: none; border-radius: 4px; background: #9C27B0; color: white; font-size: 11px; cursor: pointer;">Update Node</button>
+                    </div>
                   </div>
-                  <!-- Keyframe Controls -->
-                  <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid #555; padding-left: 10px;">
-                    <span style="color: white; font-size: 14px; white-space: nowrap;">Camera Animation:</span>
-                    <button class="add-keyframe-button" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #4CAF50; color: white; font-size: 12px; cursor: pointer;">Add Keyframe</button>
-                    <button class="preview-animation-button" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #FF9800; color: white; font-size: 12px; cursor: pointer;">Preview</button>
-                    <button class="clear-keyframes-button" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #F44336; color: white; font-size: 12px; cursor: pointer;">Clear</button>
-                    <span class="keyframe-count-display" style="color: #DDD; font-size: 12px; white-space: nowrap;">(0 Keyframes)</span>
-                  </div>
-                  <!-- Node Update Control -->
-                  <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid #555; padding-left: 10px;">
-                    <button class="force-node-update-button" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #9C27B0; color: white; font-size: 12px; cursor: pointer;">Update Node</button>
-                  </div>
-                  <!-- Hidden Timestamp Input (n'affecte pas le layout) -->
+                  
+                  <!-- Hidden Timestamp Input -->
                   <input type="hidden" class="camera-timestamp-input" value="${Date.now()}">
                 </div>
               </div>`
