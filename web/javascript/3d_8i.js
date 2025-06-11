@@ -866,10 +866,10 @@ app.registerExtension({
               
               // Create a canvas for Three.js rendering of the DashPlayer hologram
               html = `<div class="viewer-container" style="
-                width: ${that.size[0] - 96}px; 
+                width: ${that.size[0] - 48}px; 
                 height: ${that.size[1] - 88}px; 
                 position: relative; 
-                margin: 24px 48px;
+                margin: 24px auto;
                 background-color: #000000;
                 display: flex;
                 justify-content: center;
