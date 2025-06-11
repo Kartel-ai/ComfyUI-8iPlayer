@@ -1,19 +1,12 @@
-// Create a global object to hold the module exports
-window.DashPlayerModule = {};
+// This file acts as a bridge to the main DashPlayer library.
+// It imports the necessary components and re-exports them with the names the application expects.
+import { o, p, q } from './lib/DashPlayer-Dn48qdmH.js';
 
-(async () => {
-    try {
-        // Dynamically import the module from the correct path
-        const module = await import('/8i/app/lib/DashPlayer.module.js');
+// o -> DOT_WIDTH
+// p -> DashPlayer
+// q -> DashPlayerWebGLImplementation
+export const DOT_WIDTH = o;
+export const DashPlayer = p;
+export const DashPlayerWebGLImplementation = q;
 
-        // Assign the exports to the global object
-        window.DashPlayerModule.DOT_WIDTH = module.o;
-        window.DashPlayerModule.DashPlayer = module.p;
-        window.DashPlayerModule.DashPlayerWebGLImplementation = module.q;
-
-        console.log("DashPlayer.module.js loaded and assigned to window.DashPlayerModule");
-    } catch (error) {
-        console.error("Failed to import DashPlayer.module.js:", error);
-    }
-})();
-
+console.log("DashPlayer module bridge loaded successfully."); 
