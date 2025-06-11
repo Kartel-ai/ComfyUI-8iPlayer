@@ -1,8 +1,3 @@
-// Shim for libraries that expect a Node.js environment
-if (typeof window.process === 'undefined') {
-  window.process = { env: {} };
-}
-
 // ------------------------------
 // DASH PLAYER / THREE.JS HOLOGRAM SETUP
 // ------------------------------
@@ -14,7 +9,6 @@ import { OrbitControls } from './OrbitControls.js'
 import { RoomEnvironment } from './RoomEnvironment.js'
 import { RGBELoader } from './RGBELoader.js'
 import { loadExternalScript, get_position_style } from './common.js'
-import { DashPlayer, DashPlayerWebGLImplementation } from './DashPlayer.js';
 
 // Set THREE globally
 window.THREE = THREE;
@@ -434,9 +428,9 @@ const parseImage = url => {
 async function load8iHologram(scene, renderer, camera, mpdUrl, opts = {}) {
   console.log(`[load8iHologram] Initializing DashPlayer for ${mpdUrl}`);
   // Create a new DashPlayer instance with its WebGL implementation.
-  const player = new DashPlayer(
+  const player = new window.DashPlayer(
     renderer,
-    new DashPlayerWebGLImplementation()
+    new window.DashPlayerWebGLImplementation()
   );
   console.log(`[load8iHologram] DashPlayer created. Setting up controls and render loop...`);
   
@@ -462,8 +456,8 @@ async function load8iHologram(scene, renderer, camera, mpdUrl, opts = {}) {
     console.log(`[load8iHologram] Manifest loaded successfully.`);
     const mesh = player.mesh;
     const MESH_SCALE = 1.0;
-    mesh.scale.set(MESH_SCALE, MESH_SCALE, MESH_SCALE);
-    mesh.position.y = 0; // Reset y-position, adjust if needed
+    mesh.scale.set(MESH_SCALE * 0.01, MESH_SCALE * 0.01, MESH_SCALE * 0.01);
+    mesh.position.y -= MESH_SCALE * 0.75;
     scene.add(mesh);
     console.log(`[load8iHologram] Mesh added to scene.`);
   } catch (error) {
@@ -629,6 +623,7 @@ app.registerExtension({
     // Expose THREE globally for DashPlayer
     window.THREE = THREE;
     console.log('Set THREE globally:', window.THREE ? 'Success' : 'Failed');
+    await loadExternalScript('/8i/app/lib/DashPlayer.js', 'module');
     
   },
 
@@ -764,8 +759,6 @@ app.registerExtension({
           // Function to handle both GLB and MPD loading
           const handleModelLoading = async (url, isMpd, that) => {
             let html
-            const key = '8i_3d_data';
-            let localData = getLocalData(key);
             console.log(`[handleModelLoading] Starting for ${isMpd ? 'MPD' : 'GLB'}: ${url}`);
             if (isMpd) {
               console.log("[handleModelLoading] Checking dependencies...");
@@ -948,10 +941,6 @@ app.registerExtension({
                 alpha: true
               })
               
-              // Add a basic light
-              const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
-              scene.add(ambientLight);
-
               // --- Configuration Ombres --- 
               renderer.shadowMap.enabled = false; // Désactivé par défaut
               renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Type d'ombres
@@ -1012,13 +1001,6 @@ app.registerExtension({
                   hologram.mesh.visible = true
                   try {
                   hologram.play()
-                  // Force a render after play starts
-                  if(renderer && scene && camera){
-                    hologram.controls.target.set(0, 0, 0);
-                    hologram.controls.update();
-                    renderer.render(scene, camera);
-                    console.log("[oncanplay] Forced camera update and render.");
-                  }
                   } catch(err) {
                     console.error("Error playing hologram:", err)
                   }
@@ -1345,10 +1327,41 @@ app.registerExtension({
                 } else {
                 console.warn(`[NODE ${that.id}] Could not add 'end' listener: hologram.controls is missing.`);
                 }
-            } else {
-              // This block is for GLB files, not MPD
-              const modelViewerVariants = preview.querySelector('model-viewer')
-              // ... more glb logic
+
+                if (thumbUrl) {
+                  let tb = await base64ToBlobFromURL(thumbUrl)
+                  let tUrl = await uploadImage(tb, '.png')
+                  dd[that.id].material = tUrl
+                }
+                setLocalDataOfWin(key, dd)
+              
+              // Mettre à jour le widget caché pour forcer l'exécution
+              const forceUpdateWidget = that.widgets.find(w => w.name === '_camera_timestamp');
+              if (forceUpdateWidget) {
+                // Définir le timestamp actuel
+                const now = Date.now();
+                timestampInput.value = now;
+                console.log(`[NODE ${that.id}] ModelViewer camera changed. Updated hidden timestamp input to ${now}.`);
+                
+                // Stocker aussi l'état caméra de ModelViewer
+                try {
+                  let d = getLocalData('8i_3d_data') // Recharger pour être sûr
+                  if (!d[that.id]) d[that.id] = {}
+                  d[that.id].cameraState = {
+                    type: 'modelviewer',
+                    orbit: modelViewerVariants.cameraOrbit,
+                    target: modelViewerVariants.cameraTarget,
+                    fieldOfView: modelViewerVariants.getFieldOfView() // Ajouter FoV
+                  };
+                  setLocalDataOfWin('8i_3d_data', d);
+                  console.log(`[NODE ${that.id}] Stored ModelViewer camera state.`);
+                } catch (err) {
+                   console.error(`[NODE ${that.id}] Error storing ModelViewer camera state:`, err);
+                }
+
+                                } else {
+                console.warn('Hidden timestamp input not found for ModelViewer update.');
+              }
             }
           }
           return div
