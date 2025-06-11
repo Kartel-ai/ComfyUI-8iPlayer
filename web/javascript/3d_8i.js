@@ -461,8 +461,8 @@ async function load8iHologram(scene, renderer, camera, mpdUrl, opts = {}) {
     console.log(`[load8iHologram] Manifest loaded successfully.`);
     const mesh = player.mesh;
     const MESH_SCALE = 1.0;
-    mesh.scale.set(MESH_SCALE * 0.01, MESH_SCALE * 0.01, MESH_SCALE * 0.01);
-    mesh.position.y -= MESH_SCALE * 0.75;
+    mesh.scale.set(MESH_SCALE, MESH_SCALE, MESH_SCALE);
+    mesh.position.y = 0; // Reset y-position, adjust if needed
     scene.add(mesh);
     console.log(`[load8iHologram] Mesh added to scene.`);
   } catch (error) {
@@ -948,6 +948,10 @@ app.registerExtension({
                 alpha: true
               })
               
+              // Add a basic light
+              const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+              scene.add(ambientLight);
+
               // --- Configuration Ombres --- 
               renderer.shadowMap.enabled = false; // Désactivé par défaut
               renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Type d'ombres
