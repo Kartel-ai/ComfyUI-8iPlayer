@@ -830,7 +830,7 @@ app.registerExtension({
                   <!-- Groupe Background (Couleur + HDR URL) -->
                   <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="color: white; font-size: 14px; white-space: nowrap;">Background:</span>
-                    <input type="color" class="bg-color" value="#000000" style="width: 32px; height: 32px; border: none; border-radius: 4px; padding: 2px; background: #ffffff1a; cursor: pointer;">
+                    <input type="color" class="bg-color" value="#0A0A0A" style="width: 32px; height: 32px; border: none; border-radius: 4px; padding: 2px; background: #ffffff1a; cursor: pointer;">
                     <input type="text" class="hdr-url-input" placeholder="Or enter HDR URL" style="height: 30px; flex-grow: 1; min-width: 150px; background-color: #333; color: white; border: 1px solid #555; border-radius: 3px; padding: 2px 6px; font-size: 12px;">
                     <button class="load-hdr-url-button" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #2196F3; color: white; font-size: 12px; cursor: pointer;">Load URL</button>
                   </div>
@@ -988,8 +988,8 @@ app.registerExtension({
               // Ensure proper initialization
               renderer.setPixelRatio(window.devicePixelRatio)
               renderer.setSize(canvas.clientWidth, canvas.clientHeight, false)  // false to prevent style changes
-              // Set initial background color to ensure proper coverage from start
-              renderer.setClearColor('#000000', 1.0)
+              // Set initial background color to ensure proper coverage from start (slightly gray for better rendering)
+              renderer.setClearColor('#0A0A0A', 1.0)
               camera.position.z = 5
               
               // Store references on canvas for resize handling
@@ -1438,9 +1438,9 @@ app.registerExtension({
                 console.log(`[Background] Restoring saved background color: ${savedColor}`);
                 applyBackgroundColor(savedColor);
               } else {
-                // Set default black background if no saved color
-                console.log('[Background] No saved color, applying default black');
-                applyBackgroundColor('#000000');
+                // Set default background color if no saved color (slightly gray for better rendering)
+                console.log('[Background] No saved color, applying default background');
+                applyBackgroundColor('#0A0A0A');
               }
 
               // Handle playback control with camera animation detection
