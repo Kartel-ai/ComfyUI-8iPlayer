@@ -434,12 +434,31 @@ async function load8iHologram(scene, renderer, camera, mpdUrl, opts = {}) {
   );
   console.log(`[load8iHologram] DashPlayer created. Setting up controls and render loop...`);
   
-  // Create OrbitControls
+  // Create OrbitControls with enhanced freedom
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
   controls.dampingFactor = 0.25;
-  controls.screenSpacePanning = false;
-  controls.maxPolarAngle = Math.PI / 2;
+  controls.screenSpacePanning = true; // Enable screen space panning for more freedom
+  controls.enablePan = true; // Enable panning
+  controls.enableZoom = true; // Enable zooming
+  controls.enableRotate = true; // Enable rotation
+  
+  // Remove polar angle restrictions for full rotation freedom
+  controls.maxPolarAngle = Math.PI; // Allow full vertical rotation
+  controls.minPolarAngle = 0; // Allow full vertical rotation
+  
+  // Remove azimuth restrictions for full horizontal rotation
+  controls.minAzimuthAngle = -Infinity;
+  controls.maxAzimuthAngle = Infinity;
+  
+  // Enhanced zoom settings
+  controls.minDistance = 0.1; // Allow very close zoom
+  controls.maxDistance = 1000; // Allow very far zoom
+  
+  // Enhanced pan settings
+  controls.panSpeed = 1.0;
+  controls.rotateSpeed = 1.0;
+  controls.zoomSpeed = 1.0;
   
   // Start the appropriate render loop.
   if (player.deviceCapabilities && player.deviceCapabilities.requestVideoFrameCallback) {
@@ -969,12 +988,17 @@ app.registerExtension({
               // Ensure proper initialization
               renderer.setPixelRatio(window.devicePixelRatio)
               renderer.setSize(canvas.clientWidth, canvas.clientHeight, false)  // false to prevent style changes
+              // Set initial background color to ensure proper coverage from start
+              renderer.setClearColor('#000000', 1.0)
               camera.position.z = 5
               
               // Store references on canvas for resize handling
               canvas._scene = scene
               canvas._camera = camera
               canvas._renderer = renderer
+              
+              // Force initial render to establish background properly
+              renderer.render(scene, camera)
               
               console.log("[handleModelLoading] THREE scene initialized. Calling load8iHologram...");
               // Load the hologram using the new DashPlayer-based loader with error handling
@@ -1011,11 +1035,13 @@ app.registerExtension({
                   }
                 }
               }
-              // Animation loop
+              // Animation loop with background preservation
               let animationFrame
               function render(timestamp) {
                 animationFrame = requestAnimationFrame(render)
                 hologram.update(timestamp)
+                
+                // Ensure background is maintained in every frame
                 renderer.render(scene, camera)
               }
               render()
@@ -1035,6 +1061,46 @@ app.registerExtension({
               const playIcon = preview.querySelector('.play-icon')
               const pauseIcon = preview.querySelector('.pause-icon')
               const viewerContainer = preview.querySelector('.viewer-container')
+              
+              // Initialize playback state variables early
+              let isPlaying = true;
+              let cameraAnimationEnabled = false;
+              
+              // Utility function to update play button visual state
+              const updatePlayButtonState = () => {
+                const localData = getLocalData(key);
+                const hasKeyframes = localData[that.id]?.keyframes?.length > 1;
+                if (hasKeyframes) {
+                  playbackControl.style.borderColor = '#FF9800';
+                  playbackControl.title = `Play/Pause ${isPlaying ? '(Playing' : '(Paused'} with Camera Animation)`;
+                } else {
+                  playbackControl.style.borderColor = '';
+                  playbackControl.title = `Play/Pause ${isPlaying ? '(Playing)' : '(Paused)'}`;
+                }
+              };
+              
+              // Utility function to apply background color robustly
+              const applyBackgroundColor = (color) => {
+                console.log(`[Background] Applying background color: ${color}`);
+                
+                // Apply to all elements for complete coverage
+                viewerContainer.style.backgroundColor = color
+                bgColorInput.value = color
+                
+                if (renderer) {
+                  renderer.setClearColor(color, 1.0)  // Force full opacity
+                  // Force multiple renders to ensure the background sticks
+                  for(let i = 0; i < 3; i++) {
+                    setTimeout(() => renderer.render(scene, camera), i * 50);
+                  }
+                }
+                
+                if (canvas) {
+                  canvas.style.backgroundColor = color
+                }
+                
+                console.log(`[Background] Applied ${color} to all elements`);
+              };
 
               // --- Logique Upload HDR (Déplacé ici) --- 
               let loadHdrUrlButton = null;
@@ -1232,11 +1298,7 @@ app.registerExtension({
                   updateKeyframeDisplay(that.id);
                   
                   // Update play button visual feedback
-                  const hasKeyframes = localData[that.id].keyframes.length > 1;
-                  if (hasKeyframes) {
-                    playbackControl.style.borderColor = '#FF9800';
-                    playbackControl.title = `Play/Pause ${isPlaying ? '(Playing' : '(Paused'} with Camera Animation)`;
-                  }
+                  updatePlayButtonState();
                   
                   forceNodeUpdate();
                 });
@@ -1253,8 +1315,7 @@ app.registerExtension({
                   updateKeyframeDisplay(that.id);
                   
                   // Reset play button visual feedback
-                  playbackControl.style.borderColor = '';
-                  playbackControl.title = `Play/Pause ${isPlaying ? '(Playing)' : '(Paused)'}`;
+                  updatePlayButtonState();
                   
                   forceNodeUpdate();
                 });
@@ -1349,36 +1410,16 @@ app.registerExtension({
               // Handle background color changes and persistence (improved)
               const handleBgColorChange = (e) => {
                 const color = e.target.value
-                console.log(`[Background] Changing background color to: ${color}`);
+                console.log(`[Background] User changing background color to: ${color}`);
                 
-                // Apply to viewer container
-                viewerContainer.style.backgroundColor = color
-                
-                // Apply to renderer with full opacity to ensure proper coverage
-                if (renderer) {
-                  renderer.setClearColor(color, 1.0)  // Force full opacity
-                  renderer.render(scene, camera)
-                  console.log(`[Background] Applied to renderer: ${color}`);
-                }
-                
-                // Apply to canvas directly for extra assurance
-                if (canvas) {
-                  canvas.style.backgroundColor = color
-                  console.log(`[Background] Applied to canvas: ${color}`);
-                }
+                // Use the same robust background application function
+                applyBackgroundColor(color);
                 
                 // Save color to local data
                 let localData = getLocalData(key);
                 if (!localData[that.id]) localData[that.id] = {}
                 localData[that.id].bgColor = color
                 setLocalDataOfWin(key, localData)
-                
-                // Force a re-render to ensure the background is properly applied
-                setTimeout(() => {
-                  if (renderer && scene && camera) {
-                    renderer.render(scene, camera);
-                  }
-                }, 100);
               }
 
               bgColorInput.addEventListener('input', handleBgColorChange)
@@ -1386,57 +1427,23 @@ app.registerExtension({
               // Initial display update for keyframes and UI state
               updateKeyframeDisplay(that.id);
               
-              // Initialize play button visual state based on existing keyframes
-              const initialData = getLocalData(key);
-              const hasInitialKeyframes = initialData[that.id]?.keyframes?.length > 1;
-              if (hasInitialKeyframes) {
-                playbackControl.style.borderColor = '#FF9800';
-                playbackControl.title = `Play/Pause ${isPlaying ? '(Playing' : '(Paused'} with Camera Animation)`;
-              } else {
-                playbackControl.style.borderColor = '';
-                playbackControl.title = `Play/Pause ${isPlaying ? '(Playing)' : '(Paused)'}`;
-              }
+              // Initialize play button visual state
+              updatePlayButtonState();
 
               // Restore saved background color if it exists (improved)
               let localData = getLocalData(key);
+              
               if (localData[that.id]?.bgColor) {
                 const savedColor = localData[that.id].bgColor
                 console.log(`[Background] Restoring saved background color: ${savedColor}`);
-                
-                viewerContainer.style.backgroundColor = savedColor
-                bgColorInput.value = savedColor
-                
-                if (renderer) {
-                  renderer.setClearColor(savedColor, 1.0)  // Force full opacity
-                  renderer.render(scene, camera)
-                }
-                
-                // Apply to canvas for extra assurance
-                if (canvas) {
-                  canvas.style.backgroundColor = savedColor
-                }
-                
-                console.log(`[Background] Successfully restored: ${savedColor}`);
+                applyBackgroundColor(savedColor);
               } else {
                 // Set default black background if no saved color
                 console.log('[Background] No saved color, applying default black');
-                const defaultColor = '#000000';
-                viewerContainer.style.backgroundColor = defaultColor
-                bgColorInput.value = defaultColor
-                
-                if (renderer) {
-                  renderer.setClearColor(defaultColor, 1.0)
-                  renderer.render(scene, camera)
-                }
-                
-                if (canvas) {
-                  canvas.style.backgroundColor = defaultColor
-                }
+                applyBackgroundColor('#000000');
               }
 
               // Handle playback control with camera animation detection
-              let isPlaying = true;
-              let cameraAnimationEnabled = false;
               playbackControl.addEventListener('click', () => {
                 isPlaying = !isPlaying;
                 playIcon.style.display = isPlaying ? 'none' : 'block';
@@ -1459,14 +1466,8 @@ app.registerExtension({
                   }
                 }
                 
-                // Update visual feedback for camera animation state
-                if (hasKeyframes) {
-                  playbackControl.style.borderColor = '#FF9800';
-                  playbackControl.title = `Play/Pause ${isPlaying ? '(Playing' : '(Paused'} with Camera Animation)`;
-                } else {
-                  playbackControl.style.borderColor = '';
-                  playbackControl.title = `Play/Pause ${isPlaying ? '(Playing)' : '(Paused)'}`;
-                }
+                // Update visual feedback using utility function
+                updatePlayButtonState();
               });
 
               // Add animation state change handlers
@@ -1477,6 +1478,62 @@ app.registerExtension({
               hologram.player.addEventListener('timeupdate', () => {
                 // Removed frequent logging to avoid console spam
               })
+
+              // Add enhanced camera controls with keyboard shortcuts
+              const addEnhancedCameraControls = () => {
+                const canvas = document.getElementById(`hologram-canvas-${that.id}`);
+                if (!canvas) return;
+                
+                // Add keyboard controls for fine camera movement
+                const onKeyDown = (event) => {
+                  if (!canvas.matches(':hover') && document.activeElement !== canvas) return;
+                  
+                  const moveSpeed = 0.1;
+                  const controls = hologram.controls;
+                  
+                  switch(event.code) {
+                    case 'KeyW': // Move forward
+                      controls.object.translateZ(-moveSpeed);
+                      break;
+                    case 'KeyS': // Move backward
+                      controls.object.translateZ(moveSpeed);
+                      break;
+                    case 'KeyA': // Move left
+                      controls.object.translateX(-moveSpeed);
+                      break;
+                    case 'KeyD': // Move right
+                      controls.object.translateX(moveSpeed);
+                      break;
+                    case 'KeyQ': // Move up
+                      controls.object.translateY(moveSpeed);
+                      break;
+                    case 'KeyE': // Move down
+                      controls.object.translateY(-moveSpeed);
+                      break;
+                  }
+                  
+                  controls.update();
+                  event.preventDefault();
+                };
+                
+                // Add focus handling for keyboard controls
+                canvas.addEventListener('mouseenter', () => {
+                  document.addEventListener('keydown', onKeyDown);
+                });
+                
+                canvas.addEventListener('mouseleave', () => {
+                  document.removeEventListener('keydown', onKeyDown);
+                });
+                
+                // Make canvas focusable
+                canvas.tabIndex = 0;
+                canvas.style.outline = 'none';
+                
+                console.log('[CameraControls] Enhanced camera controls added (WASD + QE for movement)');
+              };
+              
+              // Add enhanced controls
+              addEnhancedCameraControls();
 
               // Mettre à jour le timestamp caché lors du changement de caméra OrbitControls
               if (hologram.controls) {
