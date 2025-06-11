@@ -29,13 +29,31 @@ async function captureFrames(countToCapture, node) {
     progressElement.style.display = 'block'; // Rendre visible
   }
   
-  // Désactiver les contrôles de la caméra
+  // Manage camera controls during capture (improved for animation)
   let controls = globalHologram?.controls;
   let originalControlsEnabled = true;
+  let originalControlsState = {};
+  
   if (controls) {
     originalControlsEnabled = controls.enabled;
-    controls.enabled = false;
-    console.log("[FRAME_CAPTURE] Disabled OrbitControls");
+    
+    // Save original control settings
+    originalControlsState = {
+      enableDamping: controls.enableDamping,
+      dampingFactor: controls.dampingFactor,
+      autoRotate: controls.autoRotate
+    };
+    
+    // For camera animation, modify controls instead of disabling them completely
+    if (isAnimated) {
+      console.log("[FRAME_CAPTURE] Configuring controls for camera animation");
+      controls.enableDamping = false; // Disable damping for precise animation
+      controls.autoRotate = false; // Disable auto-rotation
+      // Keep controls enabled but modify behavior
+    } else {
+      console.log("[FRAME_CAPTURE] Disabling OrbitControls for static capture");
+      controls.enabled = false;
+    }
   } else {
      console.warn("[FRAME_CAPTURE] OrbitControls not found on hologram object.");
   }
@@ -196,13 +214,16 @@ async function captureFrames(countToCapture, node) {
         progressElement.innerText = `Capturing ${i + 1}/${countToCapture} (${percent}%)`; 
       }
       
-      // --- Animate Camera Position ---
+      // --- Animate Camera Position (Improved for smooth recording) ---
       if (isAnimated) {
         const totalSegments = keyframes.length - 1;
         const animationProgress = (countToCapture > 1) ? (i / (countToCapture - 1)) : 0;
         const segmentProgress = animationProgress * totalSegments;
         const currentSegmentIndex = Math.min(Math.floor(segmentProgress), totalSegments - 1);
-        const progressInSegment = segmentProgress - currentSegmentIndex;
+        let progressInSegment = segmentProgress - currentSegmentIndex;
+        
+        // Apply easing for smoother animation (ease-in-out)
+        progressInSegment = progressInSegment * progressInSegment * (3.0 - 2.0 * progressInSegment);
 
         const startKeyframe = keyframes[currentSegmentIndex];
         const endKeyframe = keyframes[currentSegmentIndex + 1];
@@ -216,19 +237,24 @@ async function captureFrames(countToCapture, node) {
           const endTarget = new THREE.Vector3(endKeyframe.target.x, endKeyframe.target.y, endKeyframe.target.z);
           const interpolatedTarget = new THREE.Vector3().lerpVectors(startTarget, endTarget, progressInSegment);
           
+          // Apply camera changes smoothly
           globalHologram.controls.object.position.copy(interpolatedPosition);
           globalHologram.controls.target.copy(interpolatedTarget);
+          
+          // Force controls update without enabling/disabling them
           globalHologram.controls.update();
+          
+          console.log(`[FRAME_CAPTURE] Frame ${i+1}: Camera animated to progress ${animationProgress.toFixed(3)}`);
         }
       }
       // --- End Animate Camera Position ---
 
-      // Set the current time
+      // Set the current time for hologram playback
       const targetTime = i * timePerFrame;
       console.log(`[FRAME_CAPTURE] Frame ${i+1}/${countToCapture}: Setting time to ${targetTime}/${duration}`);
       globalHologram.player.currentTime = targetTime;
       
-      // Wait for the frame to render
+      // Wait for the frame to render - reduced timeout for camera animation
       console.log(`[FRAME_CAPTURE] Frame ${i+1}: Waiting for seeked event`);
       let seeked = false;
       
@@ -249,38 +275,57 @@ async function captureFrames(countToCapture, node) {
                 console.log(`[FRAME_CAPTURE] Frame ${i+1}: Seeked event timed out, continuing anyway`);
                 resolve();
               }
-            }, 10);
+            }, 50); // Increased timeout for better stability
           })
         ]);
       } catch (error) {
         console.error(`[FRAME_CAPTURE] Frame ${i+1}: Error during seek:`, error);
       }
       
-      // Force render by briefly playing and pausing
-      console.log(`[FRAME_CAPTURE] Frame ${i+1}: Forcing render with play/pause`);
+      // For camera animation, ensure hologram is properly positioned before render
+      if (isAnimated) {
+        // Give time for camera animation to settle
+        await sleep(20);
+        console.log(`[FRAME_CAPTURE] Frame ${i+1}: Camera animation settled`);
+      }
+      
+      // Force render by briefly playing and pausing (optimized for camera animation)
+      console.log(`[FRAME_CAPTURE] Frame ${i+1}: Forcing render with controlled play/pause`);
       try {
         globalHologram.play(); // Start playing to trigger render
-        await sleep(35); // Pause minimale pour laisser play() s'initier
+        await sleep(isAnimated ? 50 : 35); // Longer pause for camera animation
         globalHologram.player.pause(); // Pause immediately
         console.log(`[FRAME_CAPTURE] Frame ${i+1}: Play/Pause cycle complete`);
       } catch (err) {
         console.error(`[FRAME_CAPTURE] Frame ${i+1}: Error during play/pause cycle:`, err);
       }
       
-      // Pause minimale après le cycle play/pause
-      console.log(`[FRAME_CAPTURE] Frame ${i+1}: Minimal wait for rendering`);
-      await sleep(10); // Réduit de 50ms à 10ms
+      // Additional pause for camera animation to ensure stability
+      console.log(`[FRAME_CAPTURE] Frame ${i+1}: Final wait for rendering stability`);
+      await sleep(isAnimated ? 20 : 10); // Longer pause for camera animation
       
       console.log(`[FRAME_CAPTURE] Frame ${i+1}: Canvas found, dimensions: ${canvas.width}x${canvas.height}`);
       
-      // Force a render if THREE.js renderer is available
+      // Force multiple renders if THREE.js renderer is available (improved for camera animation)
       const renderer = canvas._renderer;
       const scene = canvas._scene;
       const camera = canvas._camera;
       
       if (renderer && scene && camera) {
-        console.log(`[FRAME_CAPTURE] Frame ${i+1}: Forcing render with THREE.js`);
-        renderer.render(scene, camera);
+        console.log(`[FRAME_CAPTURE] Frame ${i+1}: Forcing multiple renders with THREE.js`);
+        
+        // For camera animation, force multiple renders to ensure stability
+        if (isAnimated) {
+          // Force 3 renders with small delays to ensure camera position is properly updated
+          for (let renderPass = 0; renderPass < 3; renderPass++) {
+            renderer.render(scene, camera);
+            if (renderPass < 2) await sleep(5); // Small delay between renders
+          }
+          console.log(`[FRAME_CAPTURE] Frame ${i+1}: Completed ${3} stability renders for camera animation`);
+        } else {
+          // Single render for static camera
+          renderer.render(scene, camera);
+        }
       } else {
         console.log(`[FRAME_CAPTURE] Frame ${i+1}: No renderer/scene/camera available for forced render`);
       }
@@ -304,10 +349,21 @@ async function captureFrames(countToCapture, node) {
     console.error("[FRAME_CAPTURE] Error during capture:", error);
     console.error(error.stack);
   } finally {
-    // Réactiver les contrôles de la caméra
+    // Restore camera controls to their original state
     if (controls) {
-      controls.enabled = originalControlsEnabled; // Restaurer l'état précédent
-      console.log("[FRAME_CAPTURE] Re-enabled OrbitControls");
+      controls.enabled = originalControlsEnabled;
+      
+      // Restore original control settings
+      if (originalControlsState) {
+        controls.enableDamping = originalControlsState.enableDamping;
+        controls.dampingFactor = originalControlsState.dampingFactor;
+        controls.autoRotate = originalControlsState.autoRotate;
+      }
+      
+      // Force a final controls update
+      controls.update();
+      
+      console.log("[FRAME_CAPTURE] Restored OrbitControls to original state");
     }
     // Masquer/réinitialiser l'affichage de progression HTML
     if (progressElement) { 
@@ -857,6 +913,7 @@ app.registerExtension({
                     <button class="preview-animation-button" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #FF9800; color: white; font-size: 12px; cursor: pointer;">Preview</button>
                     <button class="clear-keyframes-button" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #F44336; color: white; font-size: 12px; cursor: pointer;">Clear</button>
                     <span class="keyframe-count-display" style="color: #DDD; font-size: 12px; white-space: nowrap;">(0 Keyframes)</span>
+                    <span class="camera-animation-status" style="color: #888; font-size: 11px; margin-left: 8px; padding: 2px 6px; border-radius: 3px; background: #333;">Camera: Static</span>
                   </div>
                   <!-- Node Update Control -->
                   <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid #555; padding-left: 10px;">
@@ -1070,12 +1127,29 @@ app.registerExtension({
               const updatePlayButtonState = () => {
                 const localData = getLocalData(key);
                 const hasKeyframes = localData[that.id]?.keyframes?.length > 1;
+                
+                // Update play button appearance
                 if (hasKeyframes) {
                   playbackControl.style.borderColor = '#FF9800';
+                  playbackControl.style.boxShadow = '0 0 5px rgba(255, 152, 0, 0.5)';
                   playbackControl.title = `Play/Pause ${isPlaying ? '(Playing' : '(Paused'} with Camera Animation)`;
                 } else {
                   playbackControl.style.borderColor = '';
+                  playbackControl.style.boxShadow = '';
                   playbackControl.title = `Play/Pause ${isPlaying ? '(Playing)' : '(Paused)'}`;
+                }
+                
+                // Update camera animation status (sync with keyframe display)
+                if (cameraAnimationStatus) {
+                  if (hasKeyframes) {
+                    cameraAnimationStatus.innerText = 'Camera: Animated';
+                    cameraAnimationStatus.style.background = '#4CAF50';
+                    cameraAnimationStatus.style.color = 'white';
+                  } else {
+                    cameraAnimationStatus.innerText = 'Camera: Static';
+                    cameraAnimationStatus.style.background = '#333';
+                    cameraAnimationStatus.style.color = '#888';
+                  }
                 }
               };
               
@@ -1256,12 +1330,26 @@ app.registerExtension({
               const previewAnimationButton = preview.querySelector('.preview-animation-button');
               const forceNodeUpdateButton = preview.querySelector('.force-node-update-button');
               const keyframeCountDisplay = preview.querySelector('.keyframe-count-display');
+              const cameraAnimationStatus = preview.querySelector('.camera-animation-status');
               const key = '8i_3d_data';
 
               const updateKeyframeDisplay = (nodeId) => {
                 const data = getLocalData(key);
                 const count = data[nodeId]?.keyframes?.length || 0;
                 keyframeCountDisplay.innerText = `(${count} Keyframes)`;
+                
+                // Update camera animation status
+                if (cameraAnimationStatus) {
+                  if (count >= 2) {
+                    cameraAnimationStatus.innerText = 'Camera: Animated';
+                    cameraAnimationStatus.style.background = '#4CAF50';
+                    cameraAnimationStatus.style.color = 'white';
+                  } else {
+                    cameraAnimationStatus.innerText = 'Camera: Static';
+                    cameraAnimationStatus.style.background = '#333';
+                    cameraAnimationStatus.style.color = '#888';
+                  }
+                }
                 
                 // Update preview button state
                 if (previewAnimationButton) {
@@ -1336,56 +1424,53 @@ app.registerExtension({
                   previewAnimationButton.disabled = true;
                   previewAnimationButton.innerText = 'Previewing...';
                   
-                  // Simple preview: animate between keyframes
-                  let currentKeyframe = 0;
-                  const previewDuration = 3000; // 3 seconds per keyframe
+                  // Smooth preview using same easing as capture
+                  const totalDuration = 4000; // Total animation duration in ms
+                  const startTime = Date.now();
                   
-                  const animateToNextKeyframe = () => {
-                    if (currentKeyframe >= keyframes.length - 1) {
+                  const animatePreview = () => {
+                    const elapsed = Date.now() - startTime;
+                    const totalProgress = Math.min(elapsed / totalDuration, 1);
+                    
+                    if (totalProgress >= 1) {
                       previewAnimationButton.disabled = false;
                       previewAnimationButton.innerText = 'Preview';
                       console.log('[Preview] Animation preview completed');
                       return;
                     }
                     
-                    const startFrame = keyframes[currentKeyframe];
-                    const endFrame = keyframes[currentKeyframe + 1];
-                    const startTime = Date.now();
+                    // Use same logic as capture for consistency
+                    const totalSegments = keyframes.length - 1;
+                    const segmentProgress = totalProgress * totalSegments;
+                    const currentSegmentIndex = Math.min(Math.floor(segmentProgress), totalSegments - 1);
+                    let progressInSegment = segmentProgress - currentSegmentIndex;
                     
-                    const animate = () => {
-                      const elapsed = Date.now() - startTime;
-                      const progress = Math.min(elapsed / previewDuration, 1);
-                      
-                      // Interpolate camera position
-                      const position = {
-                        x: startFrame.position.x + (endFrame.position.x - startFrame.position.x) * progress,
-                        y: startFrame.position.y + (endFrame.position.y - startFrame.position.y) * progress,
-                        z: startFrame.position.z + (endFrame.position.z - startFrame.position.z) * progress
-                      };
-                      
-                      const target = {
-                        x: startFrame.target.x + (endFrame.target.x - startFrame.target.x) * progress,
-                        y: startFrame.target.y + (endFrame.target.y - startFrame.target.y) * progress,
-                        z: startFrame.target.z + (endFrame.target.z - startFrame.target.z) * progress
-                      };
+                    // Apply same easing as capture (ease-in-out)
+                    progressInSegment = progressInSegment * progressInSegment * (3.0 - 2.0 * progressInSegment);
+                    
+                    const startFrame = keyframes[currentSegmentIndex];
+                    const endFrame = keyframes[currentSegmentIndex + 1];
+                    
+                    if (startFrame && endFrame) {
+                      // Use THREE.js vectors for precision (same as capture)
+                      const startPos = new THREE.Vector3(startFrame.position.x, startFrame.position.y, startFrame.position.z);
+                      const endPos = new THREE.Vector3(endFrame.position.x, endFrame.position.y, endFrame.position.z);
+                      const interpolatedPosition = new THREE.Vector3().lerpVectors(startPos, endPos, progressInSegment);
+
+                      const startTarget = new THREE.Vector3(startFrame.target.x, startFrame.target.y, startFrame.target.z);
+                      const endTarget = new THREE.Vector3(endFrame.target.x, endFrame.target.y, endFrame.target.z);
+                      const interpolatedTarget = new THREE.Vector3().lerpVectors(startTarget, endTarget, progressInSegment);
                       
                       // Apply to camera
-                      hologram.controls.object.position.set(position.x, position.y, position.z);
-                      hologram.controls.target.set(target.x, target.y, target.z);
+                      hologram.controls.object.position.copy(interpolatedPosition);
+                      hologram.controls.target.copy(interpolatedTarget);
                       hologram.controls.update();
-                      
-                      if (progress < 1) {
-                        requestAnimationFrame(animate);
-                      } else {
-                        currentKeyframe++;
-                        setTimeout(animateToNextKeyframe, 500); // Pause between keyframes
-                      }
-                    };
+                    }
                     
-                    animate();
+                    requestAnimationFrame(animatePreview);
                   };
                   
-                  animateToNextKeyframe();
+                  animatePreview();
                 });
               }
 
