@@ -1244,7 +1244,6 @@ app.registerExtension({
                 renderer.render(scene, camera)
                 }
                 // Save color to local data
-                let localData = getLocalData(key);
                 if (!localData[that.id]) localData[that.id] = {}
                 localData[that.id].bgColor = color
                 setLocalDataOfWin(key, localData)
@@ -1256,7 +1255,6 @@ app.registerExtension({
               updateKeyframeDisplay(that.id);
 
               // Restore saved background color if it exists
-              let localData = getLocalData(key);
               if (localData[that.id]?.bgColor) {
                 const savedColor = localData[that.id].bgColor
                 viewerContainer.style.backgroundColor = savedColor
