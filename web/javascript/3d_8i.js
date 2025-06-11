@@ -17,17 +17,6 @@ console.log("Set THREE globally: Success");
 // Déclaration globale de la variable hologram pour y accéder depuis différentes portées
 let globalHologram;
 
-// Polyfill for DashPlayer library
-if (!window.process) {
-    window.process = {
-        env: {
-            NODE_ENV: 'production'
-        }
-    };
-}
-
-let localData = {}; // Define localData to prevent reference errors
-
 // Définition de la fonction captureFrames globale
 async function captureFrames(countToCapture, node) {
   console.log("[FRAME_CAPTURE] Starting to capture frames:", countToCapture, "for node:", node.id);
@@ -92,8 +81,8 @@ async function captureFrames(countToCapture, node) {
   let capturedFrames = [];
   
   // Get keyframes for animation
-  const nodeData = localData[node.id] || {};
-  const keyframes = nodeData.keyframes || [];
+  const nodeData = getLocalData('8i_3d_data')[node.id];
+  const keyframes = nodeData?.keyframes;
 
   // Reset to beginning
   console.log("[FRAME_CAPTURE] Resetting player to beginning");
@@ -438,17 +427,9 @@ const parseImage = url => {
 // ------------------------------
 async function load8iHologram(scene, renderer, camera, mpdUrl, opts = {}) {
   console.log(`[load8iHologram] Initializing DashPlayer for ${mpdUrl}`);
-
-  // Ensure DashPlayer module is loaded
-  if (!window.DashPlayerModule || !window.DashPlayerModule.DashPlayer) {
-    console.error("[load8iHologram] DashPlayer module not found or loaded yet.");
-    return;
-  }
-  const { DashPlayer } = window.DashPlayerModule;
-
-  const dashPlayer = new DashPlayer(
+  // Create a new DashPlayer instance with its WebGL implementation.
+  const player = new window.DashPlayer(
     renderer,
-    scene,
     new window.DashPlayerWebGLImplementation()
   );
   console.log(`[load8iHologram] DashPlayer created. Setting up controls and render loop...`);
@@ -461,19 +442,19 @@ async function load8iHologram(scene, renderer, camera, mpdUrl, opts = {}) {
   controls.maxPolarAngle = Math.PI / 2;
   
   // Start the appropriate render loop.
-  if (dashPlayer.deviceCapabilities && dashPlayer.deviceCapabilities.requestVideoFrameCallback) {
-    dashPlayer.attachVideoFrameCallback();
+  if (player.deviceCapabilities && player.deviceCapabilities.requestVideoFrameCallback) {
+    player.attachVideoFrameCallback();
   } else {
-    dashPlayer.startRenderLoop();
+    player.startRenderLoop();
   }
   
   console.log(`[load8iHologram] Render loop started. Attempting to load manifest...`);
   
   // Load the manifest (mpdUrl) and add the resulting mesh to the scene.
   try {
-    await dashPlayer.loadManifest(mpdUrl);
+    await player.loadManifest(mpdUrl);
     console.log(`[load8iHologram] Manifest loaded successfully.`);
-    const mesh = dashPlayer.mesh;
+    const mesh = player.mesh;
     const MESH_SCALE = 1.0;
     mesh.scale.set(MESH_SCALE * 0.01, MESH_SCALE * 0.01, MESH_SCALE * 0.01);
     mesh.position.y -= MESH_SCALE * 0.75;
@@ -490,24 +471,24 @@ async function load8iHologram(scene, renderer, camera, mpdUrl, opts = {}) {
     get oncanplay() { return _oncanplay; },
     set oncanplay(callback) { 
       _oncanplay = callback;
-      if (dashPlayer.mesh) {
+      if (player.mesh) {
         callback();
       }
     },
-    player: dashPlayer,
-    mesh: dashPlayer.mesh,
+    player: player,
+    mesh: player.mesh,
     update: function(timestamp) {
       // Update controls
       controls.update();
     },
     play: function() {
-      dashPlayer.play();
+      player.play();
     },
     dispose: function() {
       // Dispose of controls and player
       controls.dispose();
-      if (dashPlayer.dispose) {
-        dashPlayer.dispose();
+      if (player.dispose) {
+        player.dispose();
       }
     }
   };
@@ -517,17 +498,6 @@ async function load8iHologram(scene, renderer, camera, mpdUrl, opts = {}) {
   
   // Exposer les contrôles pour pouvoir les désactiver plus tard
   hologram.controls = controls;
-  
-  // Save data to localStorage
-  const nodeData = {
-    mpdUrl: mpdUrl,
-    background: scene.background,
-    showFloor: floor.visible,
-    shadows: renderer.shadowMap.enabled,
-    keyframes: localData[node.id]?.keyframes || [],
-    hdrUrl: localData[node.id]?.hdrUrl || null
-  };
-  saveLocalData(node.id, nodeData);
   
   return hologram;
 }
@@ -1215,6 +1185,8 @@ app.registerExtension({
               const keyframeCountDisplay = preview.querySelector('.keyframe-count-display');
               const key = '8i_3d_data';
 
+              let localData = getLocalData(key);
+
               const updateKeyframeDisplay = (nodeId) => {
                 const data = getLocalData(key);
                 const count = data[nodeId]?.keyframes?.length || 0;
@@ -1232,7 +1204,7 @@ app.registerExtension({
 
               if (addKeyframeButton) {
                 addKeyframeButton.addEventListener('click', () => {
-                  let localData = getLocalData(key);
+                  localData = getLocalData(key);
                   if (!localData[that.id]) localData[that.id] = {};
                   if (!localData[that.id].keyframes) localData[that.id].keyframes = [];
                   
@@ -1253,7 +1225,7 @@ app.registerExtension({
 
               if (clearKeyframesButton) {
                 clearKeyframesButton.addEventListener('click', () => {
-                  let localData = getLocalData(key);
+                  localData = getLocalData(key);
                   if (localData[that.id]) {
                     localData[that.id].keyframes = [];
                     setLocalDataOfWin(key, localData);
@@ -1357,41 +1329,6 @@ app.registerExtension({
                 } else {
                 console.warn(`[NODE ${that.id}] Could not add 'end' listener: hologram.controls is missing.`);
                 }
-
-                if (thumbUrl) {
-                  let tb = await base64ToBlobFromURL(thumbUrl)
-                  let tUrl = await uploadImage(tb, '.png')
-                  dd[that.id].material = tUrl
-                }
-                setLocalDataOfWin(key, dd)
-              
-              // Mettre à jour le widget caché pour forcer l'exécution
-              const forceUpdateWidget = that.widgets.find(w => w.name === '_camera_timestamp');
-              if (forceUpdateWidget) {
-                // Définir le timestamp actuel
-                const now = Date.now();
-                timestampInput.value = now;
-                console.log(`[NODE ${that.id}] ModelViewer camera changed. Updated hidden timestamp input to ${now}.`);
-                
-                // Stocker aussi l'état caméra de ModelViewer
-                try {
-                  let d = getLocalData('8i_3d_data') // Recharger pour être sûr
-                  if (!d[that.id]) d[that.id] = {}
-                  d[that.id].cameraState = {
-                    type: 'modelviewer',
-                    orbit: modelViewerVariants.cameraOrbit,
-                    target: modelViewerVariants.cameraTarget,
-                    fieldOfView: modelViewerVariants.getFieldOfView() // Ajouter FoV
-                  };
-                  setLocalDataOfWin('8i_3d_data', d);
-                  console.log(`[NODE ${that.id}] Stored ModelViewer camera state.`);
-                } catch (err) {
-                   console.error(`[NODE ${that.id}] Error storing ModelViewer camera state:`, err);
-                }
-
-                                } else {
-                console.warn('Hidden timestamp input not found for ModelViewer update.');
-              }
             }
           }
           return div
