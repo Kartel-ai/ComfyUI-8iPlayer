@@ -14,7 +14,7 @@ import { OrbitControls } from './OrbitControls.js'
 import { RoomEnvironment } from './RoomEnvironment.js'
 import { RGBELoader } from './RGBELoader.js'
 import { loadExternalScript, get_position_style } from './common.js'
-import { DashPlayer, DashPlayerWebGLImplementation } from './DashPlayer.js';
+// import { DashPlayer, DashPlayerWebGLImplementation } from './DashPlayer.js'; // Removed static import
 
 // Set THREE globally
 window.THREE = THREE;
@@ -433,6 +433,10 @@ const parseImage = url => {
 // ------------------------------
 async function load8iHologram(scene, renderer, camera, mpdUrl, opts = {}) {
   console.log(`[load8iHologram] Initializing DashPlayer for ${mpdUrl}`);
+
+  // Dynamically import the DashPlayer module to ensure the process shim runs first.
+  const { DashPlayer, DashPlayerWebGLImplementation } = await import('./DashPlayer.js');
+
   // Create a new DashPlayer instance with its WebGL implementation.
   const player = new DashPlayer(
     renderer,
