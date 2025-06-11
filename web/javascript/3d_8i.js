@@ -1185,8 +1185,6 @@ app.registerExtension({
               const keyframeCountDisplay = preview.querySelector('.keyframe-count-display');
               const key = '8i_3d_data';
 
-              let localData = getLocalData(key);
-
               const updateKeyframeDisplay = (nodeId) => {
                 const data = getLocalData(key);
                 const count = data[nodeId]?.keyframes?.length || 0;
@@ -1204,7 +1202,7 @@ app.registerExtension({
 
               if (addKeyframeButton) {
                 addKeyframeButton.addEventListener('click', () => {
-                  localData = getLocalData(key);
+                  let localData = getLocalData(key);
                   if (!localData[that.id]) localData[that.id] = {};
                   if (!localData[that.id].keyframes) localData[that.id].keyframes = [];
                   
@@ -1225,7 +1223,7 @@ app.registerExtension({
 
               if (clearKeyframesButton) {
                 clearKeyframesButton.addEventListener('click', () => {
-                  localData = getLocalData(key);
+                  let localData = getLocalData(key);
                   if (localData[that.id]) {
                     localData[that.id].keyframes = [];
                     setLocalDataOfWin(key, localData);
@@ -1329,6 +1327,41 @@ app.registerExtension({
                 } else {
                 console.warn(`[NODE ${that.id}] Could not add 'end' listener: hologram.controls is missing.`);
                 }
+
+                if (thumbUrl) {
+                  let tb = await base64ToBlobFromURL(thumbUrl)
+                  let tUrl = await uploadImage(tb, '.png')
+                  dd[that.id].material = tUrl
+                }
+                setLocalDataOfWin(key, dd)
+              
+              // Mettre à jour le widget caché pour forcer l'exécution
+              const forceUpdateWidget = that.widgets.find(w => w.name === '_camera_timestamp');
+              if (forceUpdateWidget) {
+                // Définir le timestamp actuel
+                const now = Date.now();
+                timestampInput.value = now;
+                console.log(`[NODE ${that.id}] ModelViewer camera changed. Updated hidden timestamp input to ${now}.`);
+                
+                // Stocker aussi l'état caméra de ModelViewer
+                try {
+                  let d = getLocalData('8i_3d_data') // Recharger pour être sûr
+                  if (!d[that.id]) d[that.id] = {}
+                  d[that.id].cameraState = {
+                    type: 'modelviewer',
+                    orbit: modelViewerVariants.cameraOrbit,
+                    target: modelViewerVariants.cameraTarget,
+                    fieldOfView: modelViewerVariants.getFieldOfView() // Ajouter FoV
+                  };
+                  setLocalDataOfWin('8i_3d_data', d);
+                  console.log(`[NODE ${that.id}] Stored ModelViewer camera state.`);
+                } catch (err) {
+                   console.error(`[NODE ${that.id}] Error storing ModelViewer camera state:`, err);
+                }
+
+                                } else {
+                console.warn('Hidden timestamp input not found for ModelViewer update.');
+              }
             }
           }
           return div
