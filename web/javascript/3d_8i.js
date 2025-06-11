@@ -1796,8 +1796,8 @@ app.registerExtension({
             align-items: center;
             background-repeat: no-repeat;
             background-size: contain;
-            width: ${w}px;
-            height: ${h}px;
+            width: ${that.size[0] - 48}px;
+            height: ${that.size[1] - 88}px;
           `
           
           if (viewerContainer) {
@@ -1806,6 +1806,13 @@ app.registerExtension({
               height: ${h}px;
               position: relative;
               margin: 24px auto;
+              background-color: #000000;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              border-radius: 8px;
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+              overflow: hidden;
             `
           }
           
