@@ -29,13 +29,28 @@ async function captureFrames(countToCapture, node) {
     progressElement.style.display = 'block'; // Rendre visible
   }
   
-  // Désactiver les contrôles de la caméra
+  // Désactiver et geler complètement les contrôles de la caméra
   let controls = globalHologram?.controls;
   let originalControlsEnabled = true;
+  let originalDamping = true;
+  let originalCameraState = null;
+  
   if (controls) {
+    // Sauvegarder l'état original des contrôles
     originalControlsEnabled = controls.enabled;
+    originalDamping = controls.enableDamping;
+    
+    // Sauvegarder la position exacte de la caméra
+    originalCameraState = {
+      position: { ...controls.object.position },
+      target: { ...controls.target },
+      zoom: controls.object.zoom
+    };
+    
+    // Geler complètement la caméra
     controls.enabled = false;
-    console.log("[FRAME_CAPTURE] Disabled OrbitControls");
+    controls.enableDamping = false; // Éliminer tout micro-mouvement
+    console.log("[FRAME_CAPTURE] Completely frozen OrbitControls and disabled damping");
   } else {
      console.warn("[FRAME_CAPTURE] OrbitControls not found on hologram object.");
   }
@@ -196,7 +211,7 @@ async function captureFrames(countToCapture, node) {
         progressElement.innerText = `Capturing ${i + 1}/${countToCapture} (${percent}%)`; 
       }
       
-      // --- Animate Camera Position ---
+      // --- Animate Camera Position (with forced stabilization) ---
       if (isAnimated) {
         const totalSegments = keyframes.length - 1;
         const animationProgress = (countToCapture > 1) ? (i / (countToCapture - 1)) : 0;
@@ -216,9 +231,21 @@ async function captureFrames(countToCapture, node) {
           const endTarget = new THREE.Vector3(endKeyframe.target.x, endKeyframe.target.y, endKeyframe.target.z);
           const interpolatedTarget = new THREE.Vector3().lerpVectors(startTarget, endTarget, progressInSegment);
           
-          globalHologram.controls.object.position.copy(interpolatedPosition);
-          globalHologram.controls.target.copy(interpolatedTarget);
+          // Forcer la position exacte sans aucun ajustement résiduel
+          globalHologram.controls.object.position.set(interpolatedPosition.x, interpolatedPosition.y, interpolatedPosition.z);
+          globalHologram.controls.target.set(interpolatedTarget.x, interpolatedTarget.y, interpolatedTarget.z);
           globalHologram.controls.update();
+          
+          console.log(`[FRAME_CAPTURE] Frame ${i+1}: Camera locked to interpolated position`);
+        }
+      } else {
+        // Pour capture statique, forcer la position originale sauvegardée
+        if (originalCameraState && controls) {
+          controls.object.position.set(originalCameraState.position.x, originalCameraState.position.y, originalCameraState.position.z);
+          controls.target.set(originalCameraState.target.x, originalCameraState.target.y, originalCameraState.target.z);
+          controls.object.zoom = originalCameraState.zoom;
+          controls.update();
+          console.log(`[FRAME_CAPTURE] Frame ${i+1}: Camera locked to original position`);
         }
       }
       // --- End Animate Camera Position ---
@@ -278,8 +305,39 @@ async function captureFrames(countToCapture, node) {
       const scene = canvas._scene;
       const camera = canvas._camera;
       
+      // Double vérification: forcer la position de la caméra juste avant le rendu final
+      if (isAnimated) {
+        // Recalculer et forcer la position interpolée pour être absolument sûr
+        const totalSegments = keyframes.length - 1;
+        const animationProgress = (countToCapture > 1) ? (i / (countToCapture - 1)) : 0;
+        const segmentProgress = animationProgress * totalSegments;
+        const currentSegmentIndex = Math.min(Math.floor(segmentProgress), totalSegments - 1);
+        const progressInSegment = segmentProgress - currentSegmentIndex;
+
+        const startKeyframe = keyframes[currentSegmentIndex];
+        const endKeyframe = keyframes[currentSegmentIndex + 1];
+
+        if (startKeyframe && endKeyframe) {
+          const startPos = new THREE.Vector3(startKeyframe.position.x, startKeyframe.position.y, startKeyframe.position.z);
+          const endPos = new THREE.Vector3(endKeyframe.position.x, endKeyframe.position.y, endKeyframe.position.z);
+          const interpolatedPosition = new THREE.Vector3().lerpVectors(startPos, endPos, progressInSegment);
+
+          const startTarget = new THREE.Vector3(startKeyframe.target.x, startKeyframe.target.y, startKeyframe.target.z);
+          const endTarget = new THREE.Vector3(endKeyframe.target.x, endKeyframe.target.y, endKeyframe.target.z);
+          const interpolatedTarget = new THREE.Vector3().lerpVectors(startTarget, endTarget, progressInSegment);
+          
+          globalHologram.controls.object.position.set(interpolatedPosition.x, interpolatedPosition.y, interpolatedPosition.z);
+          globalHologram.controls.target.set(interpolatedTarget.x, interpolatedTarget.y, interpolatedTarget.z);
+        }
+      } else if (originalCameraState && controls) {
+        // Forcer la position originale pour capture statique
+        controls.object.position.set(originalCameraState.position.x, originalCameraState.position.y, originalCameraState.position.z);
+        controls.target.set(originalCameraState.target.x, originalCameraState.target.y, originalCameraState.target.z);
+        controls.object.zoom = originalCameraState.zoom;
+      }
+      
       if (renderer && scene && camera) {
-        console.log(`[FRAME_CAPTURE] Frame ${i+1}: Forcing render with THREE.js`);
+        console.log(`[FRAME_CAPTURE] Frame ${i+1}: Forcing render with THREE.js (camera locked)`);
         renderer.render(scene, camera);
       } else {
         console.log(`[FRAME_CAPTURE] Frame ${i+1}: No renderer/scene/camera available for forced render`);
@@ -304,10 +362,20 @@ async function captureFrames(countToCapture, node) {
     console.error("[FRAME_CAPTURE] Error during capture:", error);
     console.error(error.stack);
   } finally {
-    // Réactiver les contrôles de la caméra
+    // Restaurer complètement l'état original des contrôles de la caméra
     if (controls) {
       controls.enabled = originalControlsEnabled; // Restaurer l'état précédent
-      console.log("[FRAME_CAPTURE] Re-enabled OrbitControls");
+      controls.enableDamping = originalDamping; // Restaurer le damping original
+      
+      // Restaurer la position exacte de la caméra si on était en mode statique
+      if (!isAnimated && originalCameraState) {
+        controls.object.position.set(originalCameraState.position.x, originalCameraState.position.y, originalCameraState.position.z);
+        controls.target.set(originalCameraState.target.x, originalCameraState.target.y, originalCameraState.target.z);
+        controls.object.zoom = originalCameraState.zoom;
+        controls.update();
+      }
+      
+      console.log("[FRAME_CAPTURE] Fully restored OrbitControls and damping to original state");
     }
     // Masquer/réinitialiser l'affichage de progression HTML
     if (progressElement) { 
