@@ -9,12 +9,9 @@ import {
 
 import { smart_init, addSmartMenu } from './smart_connect.js'
 
-import { completion_ } from './chat.js'
-
 import {
   getLocalData,
   saveLocalData,
-  updateLLMAPIKey,
   convertImageUrlToBase64,
   get_nodes_map,
   injectCSS,
@@ -157,31 +154,6 @@ function resizeImage (base64Image) {
   })
 }
 
-const createMixlabBtn = () => {
-  const appsButton = document.createElement('button')
-  appsButton.id = '8i_chatbot_by_llamacpp'
-  appsButton.className = 'comfyui-button'
-  appsButton.textContent = '♾️Mixlab'
-
-  // appsButton.onclick = () =>
-  appsButton.onclick = async () => {
-    let llm_key = await updateLLMAPIKey()
-    // if (window._8i_llamacpp&&window._8i_llamacpp.model&&window._8i_llamacpp.model.length>0) {
-    //   //显示运行的模型
-    //   createModelsModal([
-    //     window._8i_llamacpp.url,
-    //     window._8i_llamacpp.model
-    //   ])
-    // } else {
-    //   // let ms = await get_llamafile_models()
-    //   // ms = ms.filter(m => !m.match('-mmproj-'))
-    //   // if (ms.length > 0) createModelsModal(ms)
-    // }
-    createModelsModal([], llm_key)
-  }
-  return appsButton
-}
-
 // 菜单入口
 async function createMenu () {
   const menu = document.querySelector('.comfy-menu')
@@ -192,18 +164,6 @@ async function createMenu () {
   background: var(--border-color);
   `
   menu.append(separator)
-
-  if (
-    menu.style.display === 'none' &&
-    document.querySelector('.comfyui-menu-push')
-  ) {
-    //新版ui
-    document.querySelector('.comfyui-menu-push').append(createMixlabBtn())
-  } else {
-    if (!menu.querySelector('#8i_chatbot_by_llamacpp')) {
-      menu.append(createMixlabBtn())
-    }
-  }
 }
 
 let isScriptLoaded = {}
@@ -484,17 +444,6 @@ injectCSS(`::-webkit-scrollbar {
   width: 2px;
 }
 
-#8i_chatbot_by_llamacpp{
-  font-size:14px
-}
-
-#8i_chatbot_by_llamacpp::before {
-  content: attr(title);
-  position: absolute;
-  margin-top: 24px;
-  font-size: 10px;
-}
-
 .mix_tag{
   padding:8px;cursor: pointer;font-size: 14px;
     color: var(--input-text);
@@ -732,240 +681,7 @@ function createInputOfLabel (labelText, key, id) {
   return div
 }
 
-function createModelsModal (models, llmKey) {
-  var div =
-    document.querySelector('#model-modal') || document.createElement('div')
-  div.id = 'model-modal'
-  div.innerHTML = ''
-  div.style.cssText = `
-    width: 100%;
-    z-index: 9990;
-    height: 100vh;
-    display: flex;
-    color: var(--descrip-text);
-    position: fixed;
-    top: 0;
-    left: 0;
-    background: #000000a8;
-    `
 
-  var modal = document.createElement('div')
-
-  div.addEventListener('click', e => {
-    e.stopPropagation()
-    div.remove()
-  })
-
-  div.appendChild(modal)
-  modal.classList.add('modal-body')
-  // Set modal styles
-  modal.style.cssText = `
-  color: var(--descrip-text);
-    background-color: var(--comfy-menu-bg);
-    position: fixed;
-    overflow:hidden;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 9999;
-    border-radius: 4px;
-    box-shadow: 4px 4px 14px rgba(255,255,255,0.2);
-  `
-
-  // Create modal header
-  const headerElement = document.createElement('div')
-  headerElement.classList.add('modal-header')
-  headerElement.style.cssText = `
-      display: flex;
-      padding: 20px 24px 8px 24px;
-      justify-content: space-between;
-    `
-
-  const headTitleElement = document.createElement('a')
-  headTitleElement.classList.add('header-title')
-  headTitleElement.style.cssText = `
-      color: var(--descrip-text);
-      font-size: 18px;
-      display: flex;
-      align-items: flex-start;
-      flex: 1;
-      overflow: hidden;
-      text-decoration: none;
-      font-weight: bold;
-      justify-content: space-between;
-      padding: 20px;
-      cursor: pointer;
-      user-select: none;
-    `
-
-  const linkIcon = document.createElement('small')
-  linkIcon.textContent = showTextByLanguage('Auto Open', {
-    'Auto Open': '自动开启'
-  })
-  linkIcon.style.padding = '4px'
-
-  const statusIcon = document.createElement('small')
-  statusIcon.textContent = showTextByLanguage('Status', {
-    Status: 'OFF'
-  })
-  statusIcon.id = 'llm_status_btn'
-  statusIcon.style = `padding: 4px;
-  background-color: rgb(102, 255, 108);
-  color: black;
-  font-size: 12px;
-  margin-left: 12px;`
-  if (window._8i_llamacpp?.url) {
-    statusIcon.textContent = window._8i_llamacpp.model
-    statusIcon.style.backgroundColor = '#66ff6c'
-    statusIcon.style.color = 'black'
-  } else {
-  }
-  statusIcon.addEventListener('click', e => {
-    e.stopPropagation()
-    // startLLM()
-  })
-
-  const batchPageBtn = document.createElement('div')
-  batchPageBtn.style = `display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 12px;`
-  batchPageBtn.innerHTML = `<a href="${get_url()}/8i/app" target="_blank" style="color: var(--input-text);
-  background-color: var(--comfy-input-bg);font-size: 16px;">MixLab App</a>`
-
-  const siliconflowHelp = document.createElement('a')
-  siliconflowHelp.textContent =
-    showTextByLanguage('Use Siliconflow', {
-      'Use Siliconflow': '使用硅基流动'
-    }) +
-    '\n' +
-    showTextByLanguage('Or Local LLM', {
-      'Or Local LLM': '或者本地LLM'
-    })
-  siliconflowHelp.style = `color: var(--input-text);
-  background-color: var(--comfy-input-bg);margin-top:14px;font-size: 16px;`
-  siliconflowHelp.href = 'https://cloud.siliconflow.cn/s/8is'
-  siliconflowHelp.target = '_blank'
-
-  const title = document.createElement('p')
-  title.innerText = 'Mixlab Nodes'
-  title.style = `font-size: 18px;
-  margin-right: 8px;
-  margin-top: 0;`
-
-  const left_d = document.createElement('div')
-  left_d.style = `display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  font-size: 12px;
-  flex-direction: column; `
-  left_d.appendChild(title)
-  left_d.appendChild(batchPageBtn)
-  left_d.appendChild(siliconflowHelp)
-
-  headTitleElement.appendChild(left_d)
-
-  //重启
-  const reStart = document.createElement('small')
-  reStart.textContent = showTextByLanguage('restart', {
-    restart: '重启'
-  })
-
-  reStart.style = `padding: 8px;
-  font-size: 16px;
-  outline: 1px solid;
-  padding-top: 4px;
-  padding-bottom: 4px;`
-
-  headTitleElement.appendChild(reStart)
-
-  if (localStorage.getItem('_8i_auto_llama_open')) {
-    linkIcon.style.backgroundColor = '#66ff6c'
-    linkIcon.style.color = 'black'
-  }
-  linkIcon.addEventListener('click', e => {
-    e.stopPropagation()
-    if (localStorage.getItem('_8i_auto_llama_open')) {
-      localStorage.setItem('_8i_auto_llama_open', '')
-      linkIcon.style.backgroundColor = ''
-      linkIcon.style.color = 'var(--descrip-text)'
-    } else {
-      localStorage.setItem('_8i_auto_llama_open', 'true')
-      linkIcon.style.backgroundColor = '#66ff6c'
-      linkIcon.style.color = 'black'
-    }
-  })
-
-  reStart.addEventListener('click', e => {
-    e.stopPropagation()
-    div.remove()
-    fetch('8i/re_start', {
-      method: 'POST'
-    })
-  })
-
-  modal.appendChild(headTitleElement)
-
-  // Create modal content area
-  var modalContent = document.createElement('div')
-  modalContent.classList.add('modal-content')
-
-  let llmKeyDiv = createInputOfLabel('LLM Key', '_8i_llm_api_key', '-')
-
-  if (!getLocalData('_8i_llm_api_url')['-']) {
-    saveLocalData('_8i_llm_api_url', '-', BIZYAIR_SERVER_ADDRESS)
-  }
-
-  let llmAPIDiv = createInputOfLabel('LLM API', '_8i_llm_api_url', '-')
-
-  if (!getLocalData('_8i_llm_model_name')['-']) {
-    saveLocalData('_8i_llm_model_name', '-', BIZYAIR_MODEL)
-  }
-
-  let llmModelDiv = createInputOfLabel(
-    'LLM Model',
-    '_8i_llm_model_name',
-    '-'
-  )
-
-  modalContent.appendChild(llmKeyDiv)
-  modalContent.appendChild(llmAPIDiv)
-  modalContent.appendChild(llmModelDiv)
-
-  var inputForSystemPrompt = document.createElement('textarea')
-  inputForSystemPrompt.className = 'comfy-multiline-input'
-  inputForSystemPrompt.style = `height: 260px;width: 480px;font-size: 16px;padding: 18px;`
-  inputForSystemPrompt.value = localStorage.getItem('_8i_system_prompt')
-
-  inputForSystemPrompt.addEventListener('change', e => {
-    e.stopPropagation()
-    localStorage.setItem('_8i_system_prompt', inputForSystemPrompt.value)
-  })
-
-  inputForSystemPrompt.addEventListener('click', e => {
-    e.stopPropagation()
-  })
-
-  modalContent.appendChild(inputForSystemPrompt)
-
-  modal.appendChild(modalContent)
-
-  const helpInfo = document.createElement('a')
-  helpInfo.textContent = showTextByLanguage('Help', {
-    Help: '寻求帮助'
-  })
-  helpInfo.style = `text-align: center;
-  display: block;
-  padding: 8px;
-  cursor: pointer;
-  font-size: 12px;
-  color: white;`
-  helpInfo.href = 'https://discord.gg/cXs9vZSqeK'
-  helpInfo.target = '_blank'
-  modal.appendChild(helpInfo)
-
-  document.body.appendChild(div)
-}
 
 function createModal (url, markdown, title) {
   // Create modal element
@@ -1340,150 +1056,9 @@ app.registerExtension({
 
     smart_init()
 
-    LGraphCanvas.prototype.text2text = async function (node) {
-      let widget = node.widgets.filter(
-        w =>
-          (w.name === 'text' || w.name === 'prompt') &&
-          typeof w.value == 'string'
-      )[0]
-      if (widget) {
-        app.canvas.centerOnNode(node)
 
-        let controller = new AbortController()
-        let ends = [] //TODO 判断终止 <|im_start|>
-        let userInput = widget.value
-        widget.value = widget.value.trim()
-        widget.value += '\n'
-        let jsonStr = ''
-        try {
-          await completion_(
-            getLocalData('_8i_llm_api_key')['-'] ||
-              Object.values(getLocalData('_8i_llm_api_key'))[0],
-            getLocalData('_8i_llm_api_url')['-'] ||
-              Object.values(getLocalData('_8i_llm_api_url'))[0],
-            getLocalData('_8i_llm_model_name')['-'] ||
-              Object.values(getLocalData('_8i_llm_model_name'))[0],
-            [
-              {
-                role: 'system',
-                content: localStorage.getItem('_8i_system_prompt')
-              },
-              { role: 'user', content: userInput }
-            ],
-            controller,
-            t => {
-              let content = t.data?.choices[0]?.delta?.content || ''
 
-              console.log(content)
-              widget.value += content
-              // jsonStr += content
-            }
-          )
-        } catch (error) {
-          console.log(error)
-        }
-      }
-    }
 
-    LGraphCanvas.prototype.image2text = async function (node) {
-      let imageBase64 = await getSelectImageNode()
-
-      if (imageBase64) {
-        // console.log('image2text')
-        // 添加note 节点
-        const NoteNode = LiteGraph.createNode('Note')
-        NoteNode.title = `Image-to-Text ${node.id}`
-        NoteNode.size = [NoteNode.size[0] + 100, NoteNode.size[1]]
-        let widget = NoteNode.widgets[0]
-        widget.value = ''
-
-        NoteNode.pos = [node.pos[0] + node.size[0] + 24, node.pos[1] - 48]
-
-        app.canvas.graph.add(NoteNode, false)
-        app.canvas.centerOnNode(NoteNode)
-
-        let controller = new AbortController()
-        let ends = []
-        let userInput = widget.value
-        widget.value = widget.value.trim()
-        widget.value += '\n'
-
-        try {
-          // await completion_(
-          //   window._8i_llamacpp.url + '/v1/chat/completions',
-          //   [
-          //     {
-          //       role: 'system',
-          //       content: localStorage.getItem('_8i_system_prompt')
-          //     },
-          //     // { role: 'user', content: userInput }
-          //     {
-          //       role: 'user',
-          //       content: [
-          //         {
-          //           type: 'image_url',
-          //           image_url: {
-          //             url: imageBase64
-          //           }
-          //         },
-          //         { type: 'text', text: 'What's in this image?' }
-          //       ]
-          //     }
-          //   ],
-          //   controller,
-          //   t => {
-          //     // console.log(t)
-          //     widget.value += t
-          //     NoteNode.size[1] = widget.element.scrollHeight + 20
-          //     widget.computedHeight = NoteNode.size[1]
-          //     app.canvas.centerOnNode(NoteNode)
-          //   }
-          // )
-        } catch (error) {
-          //是否要自动加载模型
-          // if (localStorage.getItem('_8i_auto_llama_open')) {
-          //   let model = localStorage.getItem('_8i_llama_select')
-          //   start_llama(model).then(async res => {
-          //     window._8i_llamacpp = res
-          //     document.body
-          //       .querySelector('#8i_chatbot_by_llamacpp')
-          //       .setAttribute('title', res.url)
-          //     await completion_(
-          //       window._8i_llamacpp.url + '/v1/chat/completions',
-          //       [
-          //         {
-          //           role: 'system',
-          //           content: localStorage.getItem('_8i_system_prompt')
-          //         },
-          //         {
-          //           role: 'user',
-          //           content: [
-          //             {
-          //               type: 'image_url',
-          //               image_url: {
-          //                 url: imageBase64
-          //               }
-          //             },
-          //             { type: 'text', text: 'What's in this image?' }
-          //           ]
-          //         }
-          //       ],
-          //       controller,
-          //       t => {
-          //         // console.log(t)
-          //         widget.value += t
-          //         NoteNode.size[1] = widget.element.scrollHeight + 20
-          //         widget.computedHeight = NoteNode.size[1]
-          //         app.canvas.centerOnNode(NoteNode)
-          //       }
-          //     )
-          //   })
-          // }
-        }
-
-        widget.value = widget.value.trim()
-      }
-    }
 
     const getGroupMenuOptions = LGraphCanvas.prototype.getGroupMenuOptions // store the existing method
     LGraphCanvas.prototype.getGroupMenuOptions = function (node) {
@@ -1664,27 +1239,7 @@ app.registerExtension({
           inp => inp.name == 'text' && inp.type == 'STRING'
         )
 
-        const llm_api_key =
-            getLocalData('_8i_llm_api_key')['-'] ||
-            Object.values(getLocalData('_8i_llm_api_key'))[0],
-          llm_api_url =
-            getLocalData('_8i_llm_api_url')['-'] ||
-            Object.values(getLocalData('_8i_llm_api_url'))[0]
 
-        if (
-          text_widget &&
-          text_widget.length == 1 &&
-          llm_api_key &&
-          llm_api_url &&
-          node.type != 'ShowTextForGPT'
-        ) {
-          opts.push({
-            content: 'Text-to-Text ♾️Mixlab', // with a name
-            callback: () => {
-              LGraphCanvas.prototype.text2text(node)
-            } // and the callback
-          })
-        }
 
         // if (
         //   node.imgs &&
