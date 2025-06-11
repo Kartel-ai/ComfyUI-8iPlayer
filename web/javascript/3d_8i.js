@@ -1,3 +1,8 @@
+// Shim for libraries that expect a Node.js environment
+if (typeof window.process === 'undefined') {
+  window.process = { env: {} };
+}
+
 // ------------------------------
 // DASH PLAYER / THREE.JS HOLOGRAM SETUP
 // ------------------------------
@@ -623,7 +628,7 @@ app.registerExtension({
     // Expose THREE globally for DashPlayer
     window.THREE = THREE;
     console.log('Set THREE globally:', window.THREE ? 'Success' : 'Failed');
-    await loadExternalScript('/8i/app/lib/DashPlayer.js', 'module');
+    // await loadExternalScript('/8i/app/lib/DashPlayer.js', 'module'); // This is now removed
     
   },
 
