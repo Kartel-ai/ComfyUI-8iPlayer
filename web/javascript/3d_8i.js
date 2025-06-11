@@ -1012,6 +1012,13 @@ app.registerExtension({
                   hologram.mesh.visible = true
                   try {
                   hologram.play()
+                  // Force a render after play starts
+                  if(renderer && scene && camera){
+                    hologram.controls.target.set(0, 0, 0);
+                    hologram.controls.update();
+                    renderer.render(scene, camera);
+                    console.log("[oncanplay] Forced camera update and render.");
+                  }
                   } catch(err) {
                     console.error("Error playing hologram:", err)
                   }
