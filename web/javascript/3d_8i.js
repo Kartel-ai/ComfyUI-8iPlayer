@@ -14,6 +14,7 @@ import { OrbitControls } from './OrbitControls.js'
 import { RoomEnvironment } from './RoomEnvironment.js'
 import { RGBELoader } from './RGBELoader.js'
 import { loadExternalScript, get_position_style } from './common.js'
+import { DashPlayer, DashPlayerWebGLImplementation } from './DashPlayer.js';
 
 // Set THREE globally
 window.THREE = THREE;
@@ -433,9 +434,9 @@ const parseImage = url => {
 async function load8iHologram(scene, renderer, camera, mpdUrl, opts = {}) {
   console.log(`[load8iHologram] Initializing DashPlayer for ${mpdUrl}`);
   // Create a new DashPlayer instance with its WebGL implementation.
-  const player = new window.DashPlayer(
+  const player = new DashPlayer(
     renderer,
-    new window.DashPlayerWebGLImplementation()
+    new DashPlayerWebGLImplementation()
   );
   console.log(`[load8iHologram] DashPlayer created. Setting up controls and render loop...`);
   
@@ -628,8 +629,6 @@ app.registerExtension({
     // Expose THREE globally for DashPlayer
     window.THREE = THREE;
     console.log('Set THREE globally:', window.THREE ? 'Success' : 'Failed');
-    // Manually load DashPlayer as a module from its exact, verified path.
-    await loadExternalScript('/extensions/ComfyUI-8iPlayer/javascript/lib/DashPlayer-Dn48qdmH.js', 'module');
     
   },
 
