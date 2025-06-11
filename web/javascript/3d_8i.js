@@ -835,8 +835,13 @@ app.registerExtension({
                   <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid #555; padding-left: 10px;">
                     <span style="color: white; font-size: 14px; white-space: nowrap;">Animation:</span>
                     <button class="add-keyframe-button" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #4CAF50; color: white; font-size: 12px; cursor: pointer;">Add Keyframe</button>
+                    <button class="preview-animation-button" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #FF9800; color: white; font-size: 12px; cursor: pointer;">Preview</button>
                     <button class="clear-keyframes-button" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #F44336; color: white; font-size: 12px; cursor: pointer;">Clear</button>
                     <span class="keyframe-count-display" style="color: #DDD; font-size: 12px; white-space: nowrap;">(0 Keyframes)</span>
+                  </div>
+                  <!-- Node Update Control -->
+                  <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid #555; padding-left: 10px;">
+                    <button class="force-node-update-button" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #9C27B0; color: white; font-size: 12px; cursor: pointer;">Update Node</button>
                   </div>
                   <!-- Hidden Timestamp Input (n'affecte pas le layout) -->
                   <input type="hidden" class="camera-timestamp-input" value="${Date.now()}">
@@ -1182,6 +1187,8 @@ app.registerExtension({
               // --- Logique Keyframes Animation ---
               const addKeyframeButton = preview.querySelector('.add-keyframe-button');
               const clearKeyframesButton = preview.querySelector('.clear-keyframes-button');
+              const previewAnimationButton = preview.querySelector('.preview-animation-button');
+              const forceNodeUpdateButton = preview.querySelector('.force-node-update-button');
               const keyframeCountDisplay = preview.querySelector('.keyframe-count-display');
               const key = '8i_3d_data';
 
@@ -1189,6 +1196,12 @@ app.registerExtension({
                 const data = getLocalData(key);
                 const count = data[nodeId]?.keyframes?.length || 0;
                 keyframeCountDisplay.innerText = `(${count} Keyframes)`;
+                
+                // Update preview button state
+                if (previewAnimationButton) {
+                  previewAnimationButton.disabled = count < 2;
+                  previewAnimationButton.style.opacity = count < 2 ? '0.5' : '1';
+                }
               };
               
               const forceNodeUpdate = () => {
@@ -1217,6 +1230,14 @@ app.registerExtension({
                   setLocalDataOfWin(key, localData);
                   console.log(`[Keyframe] Added keyframe #${localData[that.id].keyframes.length}. Total:`, localData[that.id].keyframes);
                   updateKeyframeDisplay(that.id);
+                  
+                  // Update play button visual feedback
+                  const hasKeyframes = localData[that.id].keyframes.length > 1;
+                  if (hasKeyframes) {
+                    playbackControl.style.borderColor = '#FF9800';
+                    playbackControl.title = `Play/Pause ${isPlaying ? '(Playing' : '(Paused'} with Camera Animation)`;
+                  }
+                  
                   forceNodeUpdate();
                 });
               }
@@ -1230,55 +1251,221 @@ app.registerExtension({
                     console.log('[Keyframe] All keyframes cleared.');
                   }
                   updateKeyframeDisplay(that.id);
+                  
+                  // Reset play button visual feedback
+                  playbackControl.style.borderColor = '';
+                  playbackControl.title = `Play/Pause ${isPlaying ? '(Playing)' : '(Paused)'}`;
+                  
                   forceNodeUpdate();
+                });
+              }
+
+              // Preview Animation Button
+              if (previewAnimationButton) {
+                previewAnimationButton.addEventListener('click', () => {
+                  const localData = getLocalData(key);
+                  const keyframes = localData[that.id]?.keyframes;
+                  
+                  if (!keyframes || keyframes.length < 2) {
+                    alert('Need at least 2 keyframes for animation preview');
+                    return;
+                  }
+                  
+                  console.log('[Preview] Starting camera animation preview');
+                  previewAnimationButton.disabled = true;
+                  previewAnimationButton.innerText = 'Previewing...';
+                  
+                  // Simple preview: animate between keyframes
+                  let currentKeyframe = 0;
+                  const previewDuration = 3000; // 3 seconds per keyframe
+                  
+                  const animateToNextKeyframe = () => {
+                    if (currentKeyframe >= keyframes.length - 1) {
+                      previewAnimationButton.disabled = false;
+                      previewAnimationButton.innerText = 'Preview';
+                      console.log('[Preview] Animation preview completed');
+                      return;
+                    }
+                    
+                    const startFrame = keyframes[currentKeyframe];
+                    const endFrame = keyframes[currentKeyframe + 1];
+                    const startTime = Date.now();
+                    
+                    const animate = () => {
+                      const elapsed = Date.now() - startTime;
+                      const progress = Math.min(elapsed / previewDuration, 1);
+                      
+                      // Interpolate camera position
+                      const position = {
+                        x: startFrame.position.x + (endFrame.position.x - startFrame.position.x) * progress,
+                        y: startFrame.position.y + (endFrame.position.y - startFrame.position.y) * progress,
+                        z: startFrame.position.z + (endFrame.position.z - startFrame.position.z) * progress
+                      };
+                      
+                      const target = {
+                        x: startFrame.target.x + (endFrame.target.x - startFrame.target.x) * progress,
+                        y: startFrame.target.y + (endFrame.target.y - startFrame.target.y) * progress,
+                        z: startFrame.target.z + (endFrame.target.z - startFrame.target.z) * progress
+                      };
+                      
+                      // Apply to camera
+                      hologram.controls.object.position.set(position.x, position.y, position.z);
+                      hologram.controls.target.set(target.x, target.y, target.z);
+                      hologram.controls.update();
+                      
+                      if (progress < 1) {
+                        requestAnimationFrame(animate);
+                      } else {
+                        currentKeyframe++;
+                        setTimeout(animateToNextKeyframe, 500); // Pause between keyframes
+                      }
+                    };
+                    
+                    animate();
+                  };
+                  
+                  animateToNextKeyframe();
+                });
+              }
+
+              // Force Node Update Button
+              if (forceNodeUpdateButton) {
+                forceNodeUpdateButton.addEventListener('click', () => {
+                  console.log('[ForceUpdate] Forcing node update');
+                  forceNodeUpdate();
+                  
+                  // Visual feedback
+                  forceNodeUpdateButton.innerText = 'Updated!';
+                  forceNodeUpdateButton.style.background = '#4CAF50';
+                  
+                  setTimeout(() => {
+                    forceNodeUpdateButton.innerText = 'Update Node';
+                    forceNodeUpdateButton.style.background = '#9C27B0';
+                  }, 1000);
                 });
               }
               // --- Fin Logique Keyframes ---
 
-              // Handle background color changes and persistence
+              // Handle background color changes and persistence (improved)
               const handleBgColorChange = (e) => {
                 const color = e.target.value
+                console.log(`[Background] Changing background color to: ${color}`);
+                
+                // Apply to viewer container
                 viewerContainer.style.backgroundColor = color
+                
+                // Apply to renderer with full opacity to ensure proper coverage
                 if (renderer) {
-                  renderer.setClearColor(color, 1)
-                renderer.render(scene, camera)
+                  renderer.setClearColor(color, 1.0)  // Force full opacity
+                  renderer.render(scene, camera)
+                  console.log(`[Background] Applied to renderer: ${color}`);
                 }
+                
+                // Apply to canvas directly for extra assurance
+                if (canvas) {
+                  canvas.style.backgroundColor = color
+                  console.log(`[Background] Applied to canvas: ${color}`);
+                }
+                
                 // Save color to local data
                 let localData = getLocalData(key);
                 if (!localData[that.id]) localData[that.id] = {}
                 localData[that.id].bgColor = color
                 setLocalDataOfWin(key, localData)
+                
+                // Force a re-render to ensure the background is properly applied
+                setTimeout(() => {
+                  if (renderer && scene && camera) {
+                    renderer.render(scene, camera);
+                  }
+                }, 100);
               }
 
               bgColorInput.addEventListener('input', handleBgColorChange)
               
-              // Initial display update for keyframes
+              // Initial display update for keyframes and UI state
               updateKeyframeDisplay(that.id);
+              
+              // Initialize play button visual state based on existing keyframes
+              const initialData = getLocalData(key);
+              const hasInitialKeyframes = initialData[that.id]?.keyframes?.length > 1;
+              if (hasInitialKeyframes) {
+                playbackControl.style.borderColor = '#FF9800';
+                playbackControl.title = `Play/Pause ${isPlaying ? '(Playing' : '(Paused'} with Camera Animation)`;
+              } else {
+                playbackControl.style.borderColor = '';
+                playbackControl.title = `Play/Pause ${isPlaying ? '(Playing)' : '(Paused)'}`;
+              }
 
-              // Restore saved background color if it exists
+              // Restore saved background color if it exists (improved)
               let localData = getLocalData(key);
               if (localData[that.id]?.bgColor) {
                 const savedColor = localData[that.id].bgColor
+                console.log(`[Background] Restoring saved background color: ${savedColor}`);
+                
                 viewerContainer.style.backgroundColor = savedColor
                 bgColorInput.value = savedColor
+                
                 if (renderer) {
-                  renderer.setClearColor(savedColor, 1)
+                  renderer.setClearColor(savedColor, 1.0)  // Force full opacity
                   renderer.render(scene, camera)
+                }
+                
+                // Apply to canvas for extra assurance
+                if (canvas) {
+                  canvas.style.backgroundColor = savedColor
+                }
+                
+                console.log(`[Background] Successfully restored: ${savedColor}`);
+              } else {
+                // Set default black background if no saved color
+                console.log('[Background] No saved color, applying default black');
+                const defaultColor = '#000000';
+                viewerContainer.style.backgroundColor = defaultColor
+                bgColorInput.value = defaultColor
+                
+                if (renderer) {
+                  renderer.setClearColor(defaultColor, 1.0)
+                  renderer.render(scene, camera)
+                }
+                
+                if (canvas) {
+                  canvas.style.backgroundColor = defaultColor
                 }
               }
 
-              // Handle playback control
+              // Handle playback control with camera animation detection
               let isPlaying = true;
+              let cameraAnimationEnabled = false;
               playbackControl.addEventListener('click', () => {
                 isPlaying = !isPlaying;
                 playIcon.style.display = isPlaying ? 'none' : 'block';
                 pauseIcon.style.display = isPlaying ? 'block' : 'none';
+                
+                // Check if camera animation is active
+                const localData = getLocalData(key);
+                const hasKeyframes = localData[that.id]?.keyframes?.length > 1;
+                
                 if (hologram) {
                   if (isPlaying) {
                     hologram.play();
+                    // Si on a des keyframes et qu'on démarre la lecture, activer l'animation de caméra
+                    if (hasKeyframes && !cameraAnimationEnabled) {
+                      console.log('[PlayPause] Starting playback with camera animation');
+                    }
                   } else {
                     hologram.player.pause();
+                    console.log('[PlayPause] Pausing playback');
                   }
+                }
+                
+                // Update visual feedback for camera animation state
+                if (hasKeyframes) {
+                  playbackControl.style.borderColor = '#FF9800';
+                  playbackControl.title = `Play/Pause ${isPlaying ? '(Playing' : '(Paused'} with Camera Animation)`;
+                } else {
+                  playbackControl.style.borderColor = '';
+                  playbackControl.title = `Play/Pause ${isPlaying ? '(Playing)' : '(Paused)'}`;
                 }
               });
 
