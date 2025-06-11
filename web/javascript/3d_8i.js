@@ -477,8 +477,29 @@ async function load8iHologram(scene, renderer, camera, mpdUrl, opts = {}) {
     const MESH_SCALE = 1.0;
     mesh.scale.set(MESH_SCALE * 0.01, MESH_SCALE * 0.01, MESH_SCALE * 0.01);
     mesh.position.y -= MESH_SCALE * 0.75;
+    
+    // Configure mesh to not interfere with background
+    mesh.renderOrder = 1; // Render after background
+    
+    // Ensure mesh materials don't cause background cropping issues
+    if (mesh.material) {
+      if (Array.isArray(mesh.material)) {
+        mesh.material.forEach(mat => {
+          if (mat) {
+            mat.alphaTest = 0;
+            mat.transparent = false;
+            mat.side = THREE.FrontSide;
+          }
+        });
+      } else {
+        mesh.material.alphaTest = 0;
+        mesh.material.transparent = false;
+        mesh.material.side = THREE.FrontSide;
+      }
+    }
+    
     scene.add(mesh);
-    console.log(`[load8iHologram] Mesh added to scene.`);
+    console.log(`[load8iHologram] Mesh configured and added to scene.`);
   } catch (error) {
     console.error("[load8iHologram] Failed to load manifest:", error);
     throw error; // Renvoyer l'erreur
@@ -962,7 +983,10 @@ app.registerExtension({
               const renderer = new THREE.WebGLRenderer({
                 antialias: true,
                 canvas: canvas,
-                alpha: true
+                alpha: false,  // Disable alpha to prevent transparency issues with black background
+                preserveDrawingBuffer: true,  // Preserve buffer for consistent rendering
+                premultipliedAlpha: false,  // Prevent alpha blending issues
+                powerPreference: "high-performance"
               })
               
               // --- Configuration Ombres --- 
@@ -985,17 +1009,54 @@ app.registerExtension({
               // scene.add(shadowCamHelper);
               // --- Fin Configuration Ombres --- 
 
-              // Ensure proper initialization
+              // Ensure proper initialization with robust background handling
               renderer.setPixelRatio(window.devicePixelRatio)
               renderer.setSize(canvas.clientWidth, canvas.clientHeight, false)  // false to prevent style changes
-              // Set initial background color to ensure proper coverage from start
-              renderer.setClearColor('#000000', 1.0)
+              
+              // Configure renderer for optimal background rendering
+              renderer.setClearColor('#000000', 1.0)  // Set initial background to black with full opacity
+              renderer.autoClear = true;  // Ensure automatic clearing
+              renderer.sortObjects = true;  // Enable object sorting for proper render order
+              renderer.shadowMap.enabled = false;  // Disable shadows initially to avoid background interference
+              
               camera.position.z = 5
               
               // Store references on canvas for resize handling
               canvas._scene = scene
               canvas._camera = camera
               canvas._renderer = renderer
+              
+              // Create physical background plane to ensure solid background coverage
+              const createBackgroundPlane = (color = '#000000') => {
+                console.log(`[Background] Creating physical background plane with color: ${color}`);
+                
+                // Remove existing background plane if any
+                const existingPlane = scene.getObjectByName('backgroundPlane');
+                if (existingPlane) {
+                  scene.remove(existingPlane);
+                }
+                
+                // Create large background plane
+                const planeGeometry = new THREE.PlaneGeometry(10000, 10000);
+                const planeMaterial = new THREE.MeshBasicMaterial({ 
+                  color: color,
+                  side: THREE.BackSide,  // Render from inside
+                  depthTest: false,      // Always render behind everything
+                  depthWrite: false      // Don't write to depth buffer
+                });
+                
+                const backgroundPlane = new THREE.Mesh(planeGeometry, planeMaterial);
+                backgroundPlane.name = 'backgroundPlane';
+                backgroundPlane.position.z = -1000;  // Far behind everything
+                backgroundPlane.renderOrder = -1;     // Render first
+                scene.add(backgroundPlane);
+                
+                console.log(`[Background] Physical background plane created and added to scene`);
+                return backgroundPlane;
+              };
+              
+              // Create initial background plane
+              let backgroundPlane = createBackgroundPlane('#000000');
               
               // Force initial render to establish background properly
               renderer.render(scene, camera)
@@ -1014,8 +1075,24 @@ app.registerExtension({
               if (!hologram || !hologram.mesh) {
                 throw new Error("Failed to load hologram mesh")
               }
+              
+              // Configure hologram mesh for proper rendering
               hologram.mesh.castShadow = false; // Désactiver par défaut
-              console.log("[handleModelLoading] Hologram mesh loaded. Setting up callbacks and controls...");
+              hologram.mesh.receiveShadow = false; // Ensure it doesn't interfere with background
+              
+              // Ensure the mesh doesn't block background rendering
+              if (hologram.mesh.material) {
+                // If material exists, ensure it doesn't interfere with background
+                hologram.mesh.material.transparent = false;
+                hologram.mesh.material.opacity = 1.0;
+                
+                // Ensure the material doesn't create weird alpha blending with black background
+                if (hologram.mesh.material.alphaTest !== undefined) {
+                  hologram.mesh.material.alphaTest = 0;
+                }
+              }
+              
+              console.log("[handleModelLoading] Hologram mesh loaded and configured. Setting up callbacks and controls...");
 
               // Vérifier si on atteint bien la configuration HDR
               console.log("[handleModelLoading] Reaching HDR setup section...");
@@ -1028,11 +1105,34 @@ app.registerExtension({
               hologram.oncanplay = () => {
                 if (hologram.mesh) {
                   hologram.mesh.visible = true
-                  try {
-                  hologram.play()
-                  } catch(err) {
-                    console.error("Error playing hologram:", err)
-                  }
+                  console.log('[Hologram] Mesh visible, attempting to start playback');
+                  
+                  // Ensure playback starts automatically with retry mechanism
+                  const startPlayback = (attempts = 0) => {
+                    try {
+                      hologram.play();
+                      console.log('[Hologram] Playback started successfully');
+                      
+                      // Ensure the UI reflects the playing state
+                      isPlaying = true;
+                      playIcon.style.display = 'none';
+                      pauseIcon.style.display = 'block';
+                      updatePlayButtonState();
+                      
+                    } catch(err) {
+                      console.error(`[Hologram] Error playing hologram (attempt ${attempts + 1}):`, err);
+                      
+                      // Retry up to 3 times with increasing delay
+                      if (attempts < 3) {
+                        setTimeout(() => startPlayback(attempts + 1), (attempts + 1) * 500);
+                      } else {
+                        console.error('[Hologram] Failed to start playback after 3 attempts');
+                      }
+                    }
+                  };
+                  
+                  // Start playback with a small delay to ensure everything is ready
+                  setTimeout(() => startPlayback(), 100);
                 }
               }
               // Animation loop with background preservation
@@ -1083,23 +1183,31 @@ app.registerExtension({
               const applyBackgroundColor = (color) => {
                 console.log(`[Background] Applying background color: ${color}`);
                 
-                // Apply to all elements for complete coverage
+                // Apply to all DOM elements for complete coverage
                 viewerContainer.style.backgroundColor = color
                 bgColorInput.value = color
-                
-                if (renderer) {
-                  renderer.setClearColor(color, 1.0)  // Force full opacity
-                  // Force multiple renders to ensure the background sticks
-                  for(let i = 0; i < 3; i++) {
-                    setTimeout(() => renderer.render(scene, camera), i * 50);
-                  }
-                }
                 
                 if (canvas) {
                   canvas.style.backgroundColor = color
                 }
                 
-                console.log(`[Background] Applied ${color} to all elements`);
+                if (renderer) {
+                  renderer.setClearColor(color, 1.0)  // Force full opacity on renderer
+                }
+                
+                // Update physical background plane for guaranteed coverage
+                backgroundPlane = createBackgroundPlane(color);
+                
+                // Force multiple renders to ensure everything is properly applied
+                for(let i = 0; i < 5; i++) {
+                  setTimeout(() => {
+                    if (renderer && scene && camera) {
+                      renderer.render(scene, camera);
+                    }
+                  }, i * 50);
+                }
+                
+                console.log(`[Background] Applied ${color} to all elements including physical plane`);
               };
 
               // --- Logique Upload HDR (Déplacé ici) --- 
