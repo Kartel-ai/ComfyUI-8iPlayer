@@ -1675,3 +1675,15 @@ async function loadAndApplyHDR(hdrUrl, scene, renderer, statusCallback) {
   });
 }
 
+function saveLocalData(nodeId, data) {
+    const allData = JSON.parse(localStorage.getItem('8i_3d_data')) || {};
+    allData[nodeId] = data;
+    localStorage.setItem('8i_3d_data', JSON.stringify(allData));
+    localData[nodeId] = data; // Also update in-memory copy
+}
+
+function getLocalData(nodeId) {
+    const allData = JSON.parse(localStorage.getItem('8i_3d_data')) || {};
+    return allData[nodeId];
+}
+
