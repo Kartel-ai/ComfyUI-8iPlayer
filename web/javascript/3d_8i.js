@@ -80,6 +80,10 @@ async function captureFrames(countToCapture, node) {
   // Array to store all captured frames
   let capturedFrames = [];
   
+  // Get keyframes for animation
+  const nodeData = getLocalData('8i_3d_data')[node.id];
+  const keyframes = nodeData?.keyframes;
+
   // Reset to beginning
   console.log("[FRAME_CAPTURE] Resetting player to beginning");
   globalHologram.player.currentTime = 0;
@@ -166,6 +170,15 @@ async function captureFrames(countToCapture, node) {
     }
   }
   
+  // --- Camera Animation Logic ---
+  let isAnimated = keyframes && keyframes.length > 1;
+  if (isAnimated) {
+    console.log(`[FRAME_CAPTURE] Starting animated capture with ${keyframes.length} keyframes.`);
+  } else {
+    console.log("[FRAME_CAPTURE] Starting static capture (no keyframes or only one).");
+  }
+  // --- End Camera Animation Logic ---
+
   if (!canvas) {
     console.error("[FRAME_CAPTURE] Canvas not found after all attempts!");
     return [];
@@ -183,6 +196,33 @@ async function captureFrames(countToCapture, node) {
         progressElement.innerText = `Capturing ${i + 1}/${countToCapture} (${percent}%)`; 
       }
       
+      // --- Animate Camera Position ---
+      if (isAnimated) {
+        const totalSegments = keyframes.length - 1;
+        const animationProgress = (countToCapture > 1) ? (i / (countToCapture - 1)) : 0;
+        const segmentProgress = animationProgress * totalSegments;
+        const currentSegmentIndex = Math.min(Math.floor(segmentProgress), totalSegments - 1);
+        const progressInSegment = segmentProgress - currentSegmentIndex;
+
+        const startKeyframe = keyframes[currentSegmentIndex];
+        const endKeyframe = keyframes[currentSegmentIndex + 1];
+
+        if (startKeyframe && endKeyframe) {
+          const startPos = new THREE.Vector3(startKeyframe.position.x, startKeyframe.position.y, startKeyframe.position.z);
+          const endPos = new THREE.Vector3(endKeyframe.position.x, endKeyframe.position.y, endKeyframe.position.z);
+          const interpolatedPosition = new THREE.Vector3().lerpVectors(startPos, endPos, progressInSegment);
+
+          const startTarget = new THREE.Vector3(startKeyframe.target.x, startKeyframe.target.y, startKeyframe.target.z);
+          const endTarget = new THREE.Vector3(endKeyframe.target.x, endKeyframe.target.y, endKeyframe.target.z);
+          const interpolatedTarget = new THREE.Vector3().lerpVectors(startTarget, endTarget, progressInSegment);
+          
+          globalHologram.controls.object.position.copy(interpolatedPosition);
+          globalHologram.controls.target.copy(interpolatedTarget);
+          globalHologram.controls.update();
+        }
+      }
+      // --- End Animate Camera Position ---
+
       // Set the current time
       const targetTime = i * timePerFrame;
       console.log(`[FRAME_CAPTURE] Frame ${i+1}/${countToCapture}: Setting time to ${targetTime}/${duration}`);
@@ -791,6 +831,13 @@ app.registerExtension({
                       <svg class="pause-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="display: none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                     </button>
                   </div>
+                  <!-- Keyframe Controls -->
+                  <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid #555; padding-left: 10px;">
+                    <span style="color: white; font-size: 14px; white-space: nowrap;">Animation:</span>
+                    <button class="add-keyframe-button" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #4CAF50; color: white; font-size: 12px; cursor: pointer;">Add Keyframe</button>
+                    <button class="clear-keyframes-button" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #F44336; color: white; font-size: 12px; cursor: pointer;">Clear</button>
+                    <span class="keyframe-count-display" style="color: #DDD; font-size: 12px; white-space: nowrap;">(0 Keyframes)</span>
+                  </div>
                   <!-- Hidden Timestamp Input (n'affecte pas le layout) -->
                   <input type="hidden" class="camera-timestamp-input" value="${Date.now()}">
                 </div>
@@ -1132,16 +1179,61 @@ app.registerExtension({
               }
               // --- Fin Logique Ombres ---
 
-              // Initialize or get existing data
-              const key = '8i_3d_data'
-              let localData = getLocalData(key)
-              if (!localData) {
-                localData = {}
-                setLocalDataOfWin(key, localData)
+              // --- Logique Keyframes Animation ---
+              const addKeyframeButton = preview.querySelector('.add-keyframe-button');
+              const clearKeyframesButton = preview.querySelector('.clear-keyframes-button');
+              const keyframeCountDisplay = preview.querySelector('.keyframe-count-display');
+              const key = '8i_3d_data';
+
+              const updateKeyframeDisplay = (nodeId) => {
+                const data = getLocalData(key);
+                const count = data[nodeId]?.keyframes?.length || 0;
+                keyframeCountDisplay.innerText = `(${count} Keyframes)`;
+              };
+              
+              const forceNodeUpdate = () => {
+                  const timestampInput = that.widgets.find(w => w.name === 'upload-preview')?.div?.querySelector('.camera-timestamp-input');
+                  if (timestampInput) {
+                    const now = Date.now();
+                    timestampInput.value = now;
+                    console.log(`[Keyframe] Forced node update with timestamp ${now}.`);
+                  }
+              };
+
+              if (addKeyframeButton) {
+                addKeyframeButton.addEventListener('click', () => {
+                  let localData = getLocalData(key);
+                  if (!localData[that.id]) localData[that.id] = {};
+                  if (!localData[that.id].keyframes) localData[that.id].keyframes = [];
+                  
+                  const controls = hologram.controls;
+                  const newKeyframe = {
+                    position: { ...controls.object.position },
+                    target: { ...controls.target },
+                    zoom: controls.object.zoom
+                  };
+                  
+                  localData[that.id].keyframes.push(newKeyframe);
+                  setLocalDataOfWin(key, localData);
+                  console.log(`[Keyframe] Added keyframe #${localData[that.id].keyframes.length}. Total:`, localData[that.id].keyframes);
+                  updateKeyframeDisplay(that.id);
+                  forceNodeUpdate();
+                });
               }
-              if (!localData[that.id]) {
-                localData[that.id] = {}
+
+              if (clearKeyframesButton) {
+                clearKeyframesButton.addEventListener('click', () => {
+                  let localData = getLocalData(key);
+                  if (localData[that.id]) {
+                    localData[that.id].keyframes = [];
+                    setLocalDataOfWin(key, localData);
+                    console.log('[Keyframe] All keyframes cleared.');
+                  }
+                  updateKeyframeDisplay(that.id);
+                  forceNodeUpdate();
+                });
               }
+              // --- Fin Logique Keyframes ---
 
               // Handle background color changes and persistence
               const handleBgColorChange = (e) => {
@@ -1158,6 +1250,9 @@ app.registerExtension({
               }
 
               bgColorInput.addEventListener('input', handleBgColorChange)
+              
+              // Initial display update for keyframes
+              updateKeyframeDisplay(that.id);
 
               // Restore saved background color if it exists
               if (localData[that.id]?.bgColor) {
@@ -1474,6 +1569,14 @@ app.registerExtension({
       const uploadWidget = node.widgets.filter(w => w.name == 'upload')[0]
       if (uploadWidget) {
         uploadWidget.value = await uploadWidget.serializeValue()
+      }
+      
+       // Update keyframe display on graph load
+      const keyframeCountDisplay = widget.div.querySelector('.keyframe-count-display');
+      if (keyframeCountDisplay) {
+        const data = getLocalData('8i_3d_data');
+        const count = data[id]?.keyframes?.length || 0;
+        keyframeCountDisplay.innerText = `(${count} Keyframes)`;
       }
     }
   }
