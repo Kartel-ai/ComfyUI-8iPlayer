@@ -14,12 +14,18 @@ import { loadExternalScript, get_position_style } from './common.js'
 window.THREE = THREE;
 console.log("Set THREE globally: Success");
 
-// Déclaration globale de la variable hologram pour y accéder depuis différentes portées
-let globalHologram;
+// Use a map to store hologram instances and their state, keyed by node ID
+const hologramInstances = {};
 
 // Définition de la fonction captureFrames globale
 async function captureFrames(countToCapture, node) {
   console.log("[FRAME_CAPTURE] Starting to capture frames:", countToCapture, "for node:", node.id);
+  const instance = hologramInstances[node.id];
+  if (!instance || !instance.hologram) {
+    console.error(`[FRAME_CAPTURE] No hologram instance found for node ID: ${node.id}`);
+    return [];
+  }
+  const hologram = instance.hologram;
   
   // Trouver l'élément d'affichage de progression HTML
   const progressElement = node.previewWidget?.div?.querySelector('.capture-progress-display'); // Accès via le previewWidget potentiel
@@ -30,7 +36,7 @@ async function captureFrames(countToCapture, node) {
   }
   
   // Désactiver les contrôles de la caméra
-  let controls = globalHologram?.controls;
+  let controls = hologram?.controls;
   let originalControlsEnabled = true;
   if (controls) {
     originalControlsEnabled = controls.enabled;
@@ -41,7 +47,7 @@ async function captureFrames(countToCapture, node) {
   }
   
   // Vérifier si hologram existe
-  if (!globalHologram || !globalHologram.player) {
+  if (!hologram || !hologram.player) {
     console.error("[FRAME_CAPTURE] No hologram player found!");
     return [];
   }
@@ -54,15 +60,15 @@ async function captureFrames(countToCapture, node) {
     console.log("[FRAME_CAPTURE] Checking for player duration");
     
     // Première tentative de lecture directe
-    if (globalHologram.player && typeof globalHologram.player.duration === 'number' && !isNaN(globalHologram.player.duration)) {
-      duration = globalHologram.player.duration;
+    if (hologram.player && typeof hologram.player.duration === 'number' && !isNaN(hologram.player.duration)) {
+      duration = hologram.player.duration;
       console.log("[FRAME_CAPTURE] Found duration from player:", duration);
     } else {
       // Essayons d'autres méthodes pour obtenir la durée
-      console.log("[FRAME_CAPTURE] Player properties:", Object.keys(globalHologram.player));
+      console.log("[FRAME_CAPTURE] Player properties:", Object.keys(hologram.player));
       
-      if (globalHologram.player.getDuration) {
-        duration = globalHologram.player.getDuration();
+      if (hologram.player.getDuration) {
+        duration = hologram.player.getDuration();
         console.log("[FRAME_CAPTURE] Got duration from getDuration():", duration);
       } else {
         console.log("[FRAME_CAPTURE] Using default duration:", duration);
@@ -80,23 +86,22 @@ async function captureFrames(countToCapture, node) {
   // Array to store all captured frames
   let capturedFrames = [];
   
-  // Get keyframes for animation
-  const nodeData = getLocalData('8i_3d_data')[node.id];
-  const keyframes = nodeData?.keyframes;
+  // Get keyframes for animation from the in-memory instance
+  const keyframes = instance.state?.keyframes;
 
   // Reset to beginning
   console.log("[FRAME_CAPTURE] Resetting player to beginning");
-  globalHologram.player.currentTime = 0;
+  hologram.player.currentTime = 0;
   
   // Create a sleep function
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
   
   // Pause playback during capture
-  const wasPlaying = !globalHologram.player.paused;
+  const wasPlaying = !hologram.player.paused;
   console.log("[FRAME_CAPTURE] Was playing:", wasPlaying);
   if (wasPlaying) {
     console.log("[FRAME_CAPTURE] Pausing player");
-    globalHologram.player.pause();
+    hologram.player.pause();
   }
   
   // Récupérer le canvas au début
@@ -115,35 +120,8 @@ async function captureFrames(countToCapture, node) {
       if (c.id && c.id.includes(`hologram-canvas`)) {
         console.log(`[FRAME_CAPTURE] Found hologram canvas: ${c.id}`);
         canvas = c;
-        
-        // Sauvegarder l'ID du canvas trouvé pour le nœud
-        try {
-          let canvasMapping = JSON.parse(localStorage.getItem('hologram_canvas_mapping') || '{}');
-          canvasMapping[node.id] = c.id;
-          localStorage.setItem('hologram_canvas_mapping', JSON.stringify(canvasMapping));
-          console.log(`[FRAME_CAPTURE] Saved canvas mapping for node ${node.id} -> ${c.id}`);
-        } catch (err) {
-          console.error("[FRAME_CAPTURE] Error saving canvas mapping:", err);
-        }
       }
     });
-    
-    // Troisième approche: vérifier si nous avons un mappage enregistré
-    if (!canvas) {
-      try {
-        const canvasMapping = JSON.parse(localStorage.getItem('hologram_canvas_mapping') || '{}');
-        const savedCanvasId = canvasMapping[node.id];
-        if (savedCanvasId) {
-          const savedCanvas = document.querySelector(`#${savedCanvasId}`);
-          if (savedCanvas) {
-            canvas = savedCanvas;
-            console.log(`[FRAME_CAPTURE] Using previously mapped canvas: ${savedCanvasId}`);
-          }
-        }
-      } catch (err) {
-        console.error("[FRAME_CAPTURE] Error retrieving canvas mapping:", err);
-      }
-    }
     
     // Quatrième approche: prendre le premier canvas si aucun autre n'est trouvé
     if (!canvas) {
@@ -151,18 +129,6 @@ async function captureFrames(countToCapture, node) {
       if (allCanvases.length > 0) {
         canvas = allCanvases[0];
         console.log(`[FRAME_CAPTURE] Using first available canvas: ${canvas.id || 'no ID'}`);
-        
-        // Sauvegarder l'ID du canvas choisi par défaut
-        if (canvas.id) {
-          try {
-            let canvasMapping = JSON.parse(localStorage.getItem('hologram_canvas_mapping') || '{}');
-            canvasMapping[node.id] = canvas.id;
-            localStorage.setItem('hologram_canvas_mapping', JSON.stringify(canvasMapping));
-            console.log(`[FRAME_CAPTURE] Saved default canvas mapping for node ${node.id} -> ${canvas.id}`);
-          } catch (err) {
-            console.error("[FRAME_CAPTURE] Error saving default canvas mapping:", err);
-          }
-        }
       } else {
         console.error("[FRAME_CAPTURE] No canvas found at all!");
         return [];
@@ -171,7 +137,8 @@ async function captureFrames(countToCapture, node) {
   }
   
   // --- Camera Animation Logic ---
-  let isAnimated = keyframes && keyframes.length > 1;
+  const useAnim = instance.state?.useAnimation;
+  let isAnimated = useAnim && keyframes && keyframes.length > 1;
   if (isAnimated) {
     console.log(`[FRAME_CAPTURE] Starting animated capture with ${keyframes.length} keyframes.`);
   } else {
@@ -216,9 +183,9 @@ async function captureFrames(countToCapture, node) {
           const endTarget = new THREE.Vector3(endKeyframe.target.x, endKeyframe.target.y, endKeyframe.target.z);
           const interpolatedTarget = new THREE.Vector3().lerpVectors(startTarget, endTarget, progressInSegment);
           
-          globalHologram.controls.object.position.copy(interpolatedPosition);
-          globalHologram.controls.target.copy(interpolatedTarget);
-          globalHologram.controls.update();
+          hologram.controls.object.position.copy(interpolatedPosition);
+          hologram.controls.target.copy(interpolatedTarget);
+          hologram.controls.update();
         }
       }
       // --- End Animate Camera Position ---
@@ -226,7 +193,7 @@ async function captureFrames(countToCapture, node) {
       // Set the current time
       const targetTime = i * timePerFrame;
       console.log(`[FRAME_CAPTURE] Frame ${i+1}/${countToCapture}: Setting time to ${targetTime}/${duration}`);
-      globalHologram.player.currentTime = targetTime;
+      hologram.player.currentTime = targetTime;
       
       // Wait for the frame to render
       console.log(`[FRAME_CAPTURE] Frame ${i+1}: Waiting for seeked event`);
@@ -236,12 +203,12 @@ async function captureFrames(countToCapture, node) {
         await Promise.race([
           new Promise(resolve => {
             const onSeeked = () => {
-              globalHologram.player.removeEventListener('seeked', onSeeked);
+              hologram.player.removeEventListener('seeked', onSeeked);
               seeked = true;
               console.log(`[FRAME_CAPTURE] Frame ${i+1}: Seeked event received`);
               resolve();
             };
-            globalHologram.player.addEventListener('seeked', onSeeked);
+            hologram.player.addEventListener('seeked', onSeeked);
           }),
           new Promise(resolve => {
             setTimeout(() => {
@@ -259,9 +226,9 @@ async function captureFrames(countToCapture, node) {
       // Force render by briefly playing and pausing
       console.log(`[FRAME_CAPTURE] Frame ${i+1}: Forcing render with play/pause`);
       try {
-        globalHologram.play(); // Start playing to trigger render
+        hologram.play(); // Start playing to trigger render
         await sleep(35); // Pause minimale pour laisser play() s'initier
-        globalHologram.player.pause(); // Pause immediately
+        hologram.player.pause(); // Pause immediately
         console.log(`[FRAME_CAPTURE] Frame ${i+1}: Play/Pause cycle complete`);
       } catch (err) {
         console.error(`[FRAME_CAPTURE] Frame ${i+1}: Error during play/pause cycle:`, err);
@@ -323,7 +290,7 @@ async function captureFrames(countToCapture, node) {
     // Restore playback if it was playing before
     if (wasPlaying) {
       console.log("[FRAME_CAPTURE] Restoring playback");
-      globalHologram.play();
+      hologram.play();
     }
   }
   
@@ -425,8 +392,8 @@ const parseImage = url => {
 // ------------------------------
 // NEW DASH PLAYER–BASED HOLOGRAM LOADER
 // ------------------------------
-async function load8iHologram(scene, renderer, camera, mpdUrl, opts = {}) {
-  console.log(`[load8iHologram] Initializing DashPlayer for ${mpdUrl}`);
+async function load8iHologram(scene, renderer, camera, mpdUrl, nodeId, opts = {}) {
+  console.log(`[load8iHologram] Initializing DashPlayer for ${mpdUrl} on node ${nodeId}`);
   // Create a new DashPlayer instance with its WebGL implementation.
   const player = new window.DashPlayer(
     renderer,
@@ -436,10 +403,9 @@ async function load8iHologram(scene, renderer, camera, mpdUrl, opts = {}) {
   
   // Create OrbitControls
   const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
-  controls.dampingFactor = 0.25;
-  controls.screenSpacePanning = false;
-  controls.maxPolarAngle = Math.PI / 2;
+  controls.maxPolarAngle = Math.PI; // allow full orbit
+  controls.screenSpacePanning = true;
+  controls.enablePan = true;
   
   // Start the appropriate render loop.
   if (player.deviceCapabilities && player.deviceCapabilities.requestVideoFrameCallback) {
@@ -493,10 +459,15 @@ async function load8iHologram(scene, renderer, camera, mpdUrl, opts = {}) {
     }
   };
   
-  // Stocker hologram globalement pour utilisation par captureFrames
-  globalHologram = hologram;
+  // Store the hologram instance in our manager, keyed by the node ID.
+  if (!hologramInstances[nodeId]) {
+    hologramInstances[nodeId] = { hologram: null, state: {} };
+  }
+  hologramInstances[nodeId].hologram = hologram;
+
+  console.log(`[load8iHologram] Stored hologram instance for node ${nodeId}. Total instances: ${Object.keys(hologramInstances).length}`);
   
-  // Exposer les contrôles pour pouvoir les désactiver plus tard
+  // Expose the controls on the hologram object for easy access
   hologram.controls = controls;
   
   return hologram;
@@ -519,10 +490,10 @@ app.registerExtension({
             return [128, 88] 
           },
           async serializeValue (nodeId, widgetIndex) {
-            let d = getLocalData('8i_3d_data')
-            if (d && d[node.id]) {
+            const instance = hologramInstances[nodeId];
+            if (instance && instance.state) {
               // Récupérer toutes les données potentiellement stockées
-              let { bgColor, mpdUrl, cameraState, images: storedImages, lastCaptureTimestamp } = d[node.id]
+              let { bgColor, mpdUrl, cameraState, images: storedImages, lastCaptureTimestamp } = instance.state;
               let data = {}
               
               // Trouver le previewWidget pour accéder aux éléments HTML
@@ -560,22 +531,20 @@ app.registerExtension({
                   console.log(`[serializeValue] Recapture needed. Capturing ${desiredCount} frames.`);
                   final_frames = await node.captureFrames(desiredCount); 
                   
-                  // Mettre à jour les images dans localStorage *après* la capture réussie
+                  // Mettre à jour les images dans la state en mémoire *après* la capture réussie
                   if (final_frames && final_frames.length > 0) {
-                      let currentData = getLocalData('8i_3d_data'); // Relire les données locales
-                      if (!currentData[node.id]) currentData[node.id] = {};
-                      currentData[node.id].images = final_frames;
+                      if (!hologramInstances[nodeId]) hologramInstances[nodeId] = { hologram: null, state: {} };
+                      hologramInstances[nodeId].state.images = final_frames;
                       // Stocker le timestamp *actuel* associé à cette capture
-                      currentData[node.id].lastCaptureTimestamp = currentTimestamp; 
-                      setLocalDataOfWin('8i_3d_data', currentData);
-                      console.log(`[serializeValue] Stored ${final_frames.length} newly captured frames and timestamp ${currentTimestamp} in localStorage.`);
+                      hologramInstances[nodeId].state.lastCaptureTimestamp = currentTimestamp; 
+                      console.log(`[serializeValue] Stored ${final_frames.length} newly captured frames and timestamp ${currentTimestamp} in memory.`);
                   }
                   
                 } catch (err) {
                   console.error('serializeValue: captureFrames error during recapture', err)
                   // En cas d'erreur, essayer d'utiliser les images précédentes si elles existent
                   final_frames = storedImages || []; 
-                  console.warn('[serializeValue] Using potentially stale frames from localStorage due to capture error.');
+                  console.warn('[serializeValue] Using potentially stale frames from memory due to capture error.');
                 }
               } else if (!needsRecapture) {
                 console.log('[serializeValue] No recapture needed. Reusing stored frames.');
@@ -694,6 +663,13 @@ app.registerExtension({
           `
           mpdUrlContainer.appendChild(loadMpdBtn)
           
+          const mpdLink = document.createElement('a');
+          mpdLink.href = 'https://player4-dev.8i.com/';
+          mpdLink.target = '_blank';
+          mpdLink.innerText = 'Browse MPDs';
+          mpdLink.style = 'margin-left:8px;color:#2196F3;font-size:12px;text-decoration:none;';
+          mpdUrlContainer.appendChild(mpdLink);
+          
           div.appendChild(mpdUrlContainer)
           
           div.style = `
@@ -741,12 +717,11 @@ app.registerExtension({
               } catch (error) {
                 // L'erreur vient probablement de handleModelLoading
                 console.error("MPD loading failed overall:", error) 
-                // Ne pas afficher d'alerte si c'est l'erreur thumbUrl, sinon afficher
-                if (!(error && error.message && error.message.includes('thumbUrl is not defined'))) {            
-                  alert(`Failed to load MPD: ${error.message || 'Unknown error'}. Check console for details.`); 
-                } else {
-                  console.warn("[LOAD MPD] Silently ignored 'thumbUrl is not defined' error during MPD load.");
-                }
+                // Display error hint in red below the input
+                const errSpan = document.createElement('span');
+                errSpan.style='color:red;font-size:12px;margin-left:8px;';
+                errSpan.innerText = 'Load failed, please click "Load MPD" again';
+                mpdUrlContainer.appendChild(errSpan);
               } finally {
                 // Réactiver le bouton SEULEMENT à la toute fin
                 loadMpdBtn.disabled = false
@@ -779,10 +754,9 @@ app.registerExtension({
               
               // Create a canvas for Three.js rendering of the DashPlayer hologram
               html = `<div class="viewer-container" style="
-                width: ${that.size[0] - 96}px; 
-                height: ${that.size[1] - 88}px; 
+                width: 100%; 
+                height: 100%; 
                 position: relative; 
-                margin: 24px 48px;
                 background-color: #000000;
                 display: flex;
                 justify-content: center;
@@ -833,10 +807,13 @@ app.registerExtension({
                   </div>
                   <!-- Keyframe Controls -->
                   <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid #555; padding-left: 10px;">
-                    <span style="color: white; font-size: 14px; white-space: nowrap;">Animation:</span>
+                    <span style="color: white; font-size: 14px; white-space: nowrap;">Camera Animation:</span>
                     <button class="add-keyframe-button" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #4CAF50; color: white; font-size: 12px; cursor: pointer;">Add Keyframe</button>
                     <button class="clear-keyframes-button" style="height: 32px; padding: 0 10px; border: none; border-radius: 4px; background: #F44336; color: white; font-size: 12px; cursor: pointer;">Clear</button>
                     <span class="keyframe-count-display" style="color: #DDD; font-size: 12px; white-space: nowrap;">(0 Keyframes)</span>
+                    <label style="color:white;font-size:12px;display:flex;align-items:center;gap:4px;">
+                      <input type="checkbox" class="use-animation-checkbox" style="margin:0;"> Use Camera Animation
+                    </label>
                   </div>
                   <!-- Hidden Timestamp Input (n'affecte pas le layout) -->
                   <input type="hidden" class="camera-timestamp-input" value="${Date.now()}">
@@ -891,17 +868,17 @@ app.registerExtension({
             // Update preview container styling
             preview.style = `
               position: relative;
-              margin-top: 60px;
+              margin-top: 10px; /* Reduced margin */
               display: flex;
               justify-content: center;
               align-items: center;
               background-repeat: no-repeat;
               background-size: contain;
-              width: ${that.size[0] - 48}px;
-              height: ${that.size[1] - 88}px;
+              width: ${that.size[0] - 20}px; /* Adjusted width */
+              height: ${that.size[1] - 150}px; /* Adjusted height */
             `
             if (that.size[1] < 400) {
-              that.setSize([that.size[0], that.size[1] + 300])
+              that.setSize([that.size[0], 400])
               app.canvas.draw(true, true)
             }
             if (isMpd) {
@@ -938,7 +915,7 @@ app.registerExtension({
               const renderer = new THREE.WebGLRenderer({
                 antialias: true,
                 canvas: canvas,
-                alpha: true
+                alpha: false // opaque background to avoid transparency in captures
               })
               
               // --- Configuration Ombres --- 
@@ -975,7 +952,7 @@ app.registerExtension({
               // Load the hologram using the new DashPlayer-based loader with error handling
               let hologram = null;
               try {
-                hologram = await load8iHologram(scene, renderer, camera, url)
+                hologram = await load8iHologram(scene, renderer, camera, url, that.id)
               } catch (loadError) {
                 console.error("[handleModelLoading] Error from load8iHologram:", loadError);
                 throw loadError; // Renvoyer l'erreur pour déclencher l'alerte
@@ -1023,6 +1000,11 @@ app.registerExtension({
                   hologram.dispose()
                 }
                 if (shadowLight) scene.remove(shadowLight); // Nettoyer la lumière
+                // Remove from our instance manager
+                if (hologramInstances[that.id]) {
+                  delete hologramInstances[that.id];
+                  console.log(`[Cleanup] Removed hologram instance for node ${that.id}. Remaining instances: ${Object.keys(hologramInstances).length}`);
+                }
               }
               // Setup controls for DashPlayer hologram display
               const bgColorInput = preview.querySelector('.bg-color')
@@ -1183,11 +1165,10 @@ app.registerExtension({
               const addKeyframeButton = preview.querySelector('.add-keyframe-button');
               const clearKeyframesButton = preview.querySelector('.clear-keyframes-button');
               const keyframeCountDisplay = preview.querySelector('.keyframe-count-display');
-              const key = '8i_3d_data';
-
+              
               const updateKeyframeDisplay = (nodeId) => {
-                const data = getLocalData(key);
-                const count = data[nodeId]?.keyframes?.length || 0;
+                const instance = hologramInstances[nodeId];
+                const count = instance?.state?.keyframes?.length || 0;
                 keyframeCountDisplay.innerText = `(${count} Keyframes)`;
               };
               
@@ -1202,20 +1183,23 @@ app.registerExtension({
 
               if (addKeyframeButton) {
                 addKeyframeButton.addEventListener('click', () => {
-                  let localData = getLocalData(key);
-                  if (!localData[that.id]) localData[that.id] = {};
-                  if (!localData[that.id].keyframes) localData[that.id].keyframes = [];
+                  const instance = hologramInstances[that.id];
+                  if (!instance || !instance.hologram || !instance.hologram.controls) {
+                    console.warn("[Keyframe] Cannot add keyframe, hologram or controls not found for node", that.id);
+                    return;
+                  }
+
+                  if (!instance.state.keyframes) instance.state.keyframes = [];
                   
-                  const controls = hologram.controls;
+                  const controls = instance.hologram.controls;
                   const newKeyframe = {
                     position: { ...controls.object.position },
                     target: { ...controls.target },
                     zoom: controls.object.zoom
                   };
                   
-                  localData[that.id].keyframes.push(newKeyframe);
-                  setLocalDataOfWin(key, localData);
-                  console.log(`[Keyframe] Added keyframe #${localData[that.id].keyframes.length}. Total:`, localData[that.id].keyframes);
+                  instance.state.keyframes.push(newKeyframe);
+                  console.log(`[Keyframe] Added keyframe #${instance.state.keyframes.length}. Total:`, instance.state.keyframes);
                   updateKeyframeDisplay(that.id);
                   forceNodeUpdate();
                 });
@@ -1223,10 +1207,9 @@ app.registerExtension({
 
               if (clearKeyframesButton) {
                 clearKeyframesButton.addEventListener('click', () => {
-                  let localData = getLocalData(key);
-                  if (localData[that.id]) {
-                    localData[that.id].keyframes = [];
-                    setLocalDataOfWin(key, localData);
+                  const instance = hologramInstances[that.id];
+                  if (instance && instance.state) {
+                    instance.state.keyframes = [];
                     console.log('[Keyframe] All keyframes cleared.');
                   }
                   updateKeyframeDisplay(that.id);
@@ -1243,10 +1226,11 @@ app.registerExtension({
                   renderer.setClearColor(color, 1)
                 renderer.render(scene, camera)
                 }
-                // Save color to local data
-                if (!localData[that.id]) localData[that.id] = {}
-                localData[that.id].bgColor = color
-                setLocalDataOfWin(key, localData)
+                // Save color to in-memory state
+                const instance = hologramInstances[that.id];
+                if (instance) {
+                    instance.state.bgColor = color;
+                }
               }
 
               bgColorInput.addEventListener('input', handleBgColorChange)
@@ -1255,8 +1239,9 @@ app.registerExtension({
               updateKeyframeDisplay(that.id);
 
               // Restore saved background color if it exists
-              if (localData[that.id]?.bgColor) {
-                const savedColor = localData[that.id].bgColor
+              const instance = hologramInstances[that.id];
+              if (instance?.state?.bgColor) {
+                const savedColor = instance.state.bgColor
                 viewerContainer.style.backgroundColor = savedColor
                 bgColorInput.value = savedColor
                 if (renderer) {
@@ -1271,11 +1256,12 @@ app.registerExtension({
                 isPlaying = !isPlaying;
                 playIcon.style.display = isPlaying ? 'none' : 'block';
                 pauseIcon.style.display = isPlaying ? 'block' : 'none';
-                if (hologram) {
+                const instance = hologramInstances[that.id];
+                if (instance) {
                   if (isPlaying) {
-                    hologram.play();
+                    instance.play();
                   } else {
-                    hologram.player.pause();
+                    instance.player.pause();
                   }
                 }
               });
@@ -1295,33 +1281,28 @@ app.registerExtension({
                 hologram.controls.addEventListener('end', () => { // Revenir à 'end' pour moins de mises à jour
                   // Trouver l'input caché dans le preview associé à CE noeud (that)
                   const timestampInput = that.widgets.find(w => w.name === 'upload-preview')?.div?.querySelector('.camera-timestamp-input');
-                  const controls = hologram.controls; // Récupérer les contrôles
+                  const instance = hologramInstances[that.id];
+                  const controls = instance?.hologram?.controls; // Récupérer les contrôles
 
-                  if (timestampInput) {
+                  if (timestampInput && controls) {
                     // Définir le timestamp actuel
                     const now = Date.now();
                     timestampInput.value = now;
                     console.log(`[NODE ${that.id}] OrbitControls 'end' event fired. Updated hidden timestamp input to ${now}.`);
                     
-                    // Stocker l'état actuel de la caméra dans localStorage
-                    try {
-                      let d = getLocalData('8i_3d_data')
-                      if (!d[that.id]) d[that.id] = {}
-                      // Cloner les objets pour éviter les références directes
-                      d[that.id].cameraState = {
+                    // Stocker l'état actuel de la caméra en mémoire
+                    if (instance) {
+                      instance.state.cameraState = {
                         type: 'orbit',
                         position: { ...controls.object.position },
                         target: { ...controls.target },
                         zoom: controls.object.zoom // Ajouter le zoom
                       };
-                      setLocalDataOfWin('8i_3d_data', d);
-                      console.log(`[NODE ${that.id}] Stored OrbitControls camera state.`);
-                    } catch (err) {
-                      console.error(`[NODE ${that.id}] Error storing OrbitControls camera state:`, err);
+                      console.log(`[NODE ${that.id}] Stored OrbitControls camera state in memory.`);
                     }
 
             } else {
-                    console.warn(`[NODE ${that.id}] OrbitControls 'end' event fired, but hidden timestamp input not found.`);
+                    console.warn(`[NODE ${that.id}] OrbitControls 'end' event fired, but hidden timestamp input or controls not found.`);
                   }
                 });
                 } else {
@@ -1343,7 +1324,7 @@ app.registerExtension({
                 timestampInput.value = now;
                 console.log(`[NODE ${that.id}] ModelViewer camera changed. Updated hidden timestamp input to ${now}.`);
                 
-                // Stocker aussi l'état caméra de ModelViewer
+                // Stocker aussi l'état caméra de ModelViewer en mémoire
                 try {
                   let d = getLocalData('8i_3d_data') // Recharger pour être sûr
                   if (!d[that.id]) d[that.id] = {}
@@ -1354,13 +1335,26 @@ app.registerExtension({
                     fieldOfView: modelViewerVariants.getFieldOfView() // Ajouter FoV
                   };
                   setLocalDataOfWin('8i_3d_data', d);
-                  console.log(`[NODE ${that.id}] Stored ModelViewer camera state.`);
+                  console.log(`[NODE ${that.id}] Stored ModelViewer camera state in memory.`);
                 } catch (err) {
                    console.error(`[NODE ${that.id}] Error storing ModelViewer camera state:`, err);
                 }
 
                                 } else {
                 console.warn('Hidden timestamp input not found for ModelViewer update.');
+              }
+
+              // Handle checkbox state persistence in memory
+              const useAnimCheckbox = preview.querySelector('.use-animation-checkbox');
+              if (useAnimCheckbox) {
+                 const instance = hologramInstances[that.id];
+                 if (instance && instance.state) {
+                     useAnimCheckbox.checked = !!instance.state.useAnimation;
+                 }
+                 useAnimCheckbox.addEventListener('change', e=>{
+                     const inst = hologramInstances[that.id];
+                     if (inst) inst.state.useAnimation = e.target.checked;
+                 });
               }
             }
           }
@@ -1431,7 +1425,7 @@ app.registerExtension({
         preview.className = 'preview'
         preview.style = ` 
           position: relative; 
-          margin-top: 60px;
+          margin-top: 20px; /* Reduced margin */
           display: flex;
           justify-content: center;
           align-items: center;
@@ -1451,30 +1445,17 @@ app.registerExtension({
           let dd = getLocalData('_mixlab_3d_image')
           
           // Calculate new dimensions
-          let w = that.size[0] - 48
-          // Hauteur = Taille totale - hauteur input MPD/Load (estimée ou fixe?) - hauteur marge - hauteur contrôles bas
+          let w = that.size[0] - 20
+          // Hauteur = Taille totale - hauteur input MPD/Load (fixe) - hauteur contrôles bas (fixe) - marges
           let h = that.size[1] - 150 
           
           // Update preview container
-          preview.style = `
-            position: relative;
-            margin-top: 60px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-repeat: no-repeat;
-            background-size: contain;
-            width: ${w}px;
-            height: ${h}px;
-          `
+          preview.style.width = `${w}px`;
+          preview.style.height = `${h}px`;
           
           if (viewerContainer) {
-            viewerContainer.style = `
-              width: ${w}px;
-              height: ${h}px;
-              position: relative;
-              margin: 24px auto;
-            `
+            viewerContainer.style.width = '100%'
+            viewerContainer.style.height = '100%'
           }
           
             if (modelViewerVariants) {
@@ -1505,24 +1486,6 @@ app.registerExtension({
             }
           }
           
-          // Handle background image scaling if present
-          if (dd[that.id]) {
-            const { bg_w, bg_h } = dd[that.id]
-            if (bg_h && bg_w) {
-              let bg_h = (w * bg_h) / bg_w
-              if (viewerContainer) {
-                viewerContainer.style.height = `${bg_h}px`
-              }
-              if (hologramCanvas) {
-                hologramCanvas.style.height = '100%'
-                const renderer = hologramCanvas._renderer
-                if (renderer) {
-                  renderer.setSize(w, bg_h)
-              }
-            }
-          }
-          }
-          
           return onResize?.apply(this, arguments)
         }
         const onRemoved = this.onRemoved
@@ -1543,6 +1506,8 @@ app.registerExtension({
     }
   },
   async loadedGraphNode (node, app) {
+    // This function is now largely obsolete as we don't persist data in localStorage.
+    // Kept for structure, but functionality is minimal.
     const sleep = (t = 1000) => {
       return new Promise((res, rej) => {
         setTimeout(() => res(1), t)
@@ -1551,31 +1516,13 @@ app.registerExtension({
     if (node.type === '3DImage') {
       let widget = node.widgets.filter(w => w.name === 'upload-preview')[0]
       if (!widget) return;
-      let dd = getLocalData('_mixlab_3d_image')
-      let id = node.id
-      if (!dd[id]) return
-      let { url, bg, mpdUrl } = dd[id]
-      if (!url && !mpdUrl) return
-      let pre = widget.div.querySelector('.preview')
-      pre.style.width = `${node.size[0] - 24}px`
-      if (url) {
-        pre.innerHTML = `<img src="${url}" style="width:100%"/>`
-      } else if (mpdUrl) {
-        pre.innerHTML = `<div>Hologram: ${mpdUrl}</div>`
-      }
-      if (bg) {
-        pre.style.backgroundImage = 'url(' + bg + ')'
-      }
-      const uploadWidget = node.widgets.filter(w => w.name == 'upload')[0]
-      if (uploadWidget) {
-        uploadWidget.value = await uploadWidget.serializeValue()
-      }
       
-       // Update keyframe display on graph load
+      const instance = hologramInstances[node.id];
+
+      // Update keyframe display on graph load/reload just in case
       const keyframeCountDisplay = widget.div.querySelector('.keyframe-count-display');
       if (keyframeCountDisplay) {
-        const data = getLocalData('8i_3d_data');
-        const count = data[id]?.keyframes?.length || 0;
+        const count = instance?.state?.keyframes?.length || 0;
         keyframeCountDisplay.innerText = `(${count} Keyframes)`;
       }
     }
