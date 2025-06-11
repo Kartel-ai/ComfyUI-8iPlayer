@@ -960,7 +960,7 @@ app.registerExtension({
               // Load the hologram using the new DashPlayer-based loader with error handling
               let hologram = null;
               try {
-                hologram = await load8iHologram(scene, renderer, camera, mpdUrl, that.id)
+                hologram = await load8iHologram(scene, renderer, camera, url, that.id)
               } catch (loadError) {
                 console.error("[handleModelLoading] Error from load8iHologram:", loadError);
                 throw loadError; // Renvoyer l'erreur pour déclencher l'alerte
