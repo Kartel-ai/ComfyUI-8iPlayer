@@ -21,6 +21,17 @@ console.log("Set THREE globally: Success");
 // Déclaration globale de la variable hologram pour y accéder depuis différentes portées
 let globalHologram;
 
+// Polyfill for DashPlayer library
+if (!window.process) {
+    window.process = {
+        env: {
+            NODE_ENV: 'production'
+        }
+    };
+}
+
+let localData = {}; // Define localData to prevent reference errors
+
 // Définition de la fonction captureFrames globale
 async function captureFrames(countToCapture, node) {
   console.log("[FRAME_CAPTURE] Starting to capture frames:", countToCapture, "for node:", node.id);
@@ -85,8 +96,8 @@ async function captureFrames(countToCapture, node) {
   let capturedFrames = [];
   
   // Get keyframes for animation
-  const nodeData = getLocalData('8i_3d_data')[node.id];
-  const keyframes = nodeData?.keyframes;
+  const nodeData = localData[node.id] || {};
+  const keyframes = nodeData.keyframes || [];
 
   // Reset to beginning
   console.log("[FRAME_CAPTURE] Resetting player to beginning");
@@ -431,9 +442,17 @@ const parseImage = url => {
 // ------------------------------
 async function load8iHologram(scene, renderer, camera, mpdUrl, opts = {}) {
   console.log(`[load8iHologram] Initializing DashPlayer for ${mpdUrl}`);
-  // Create a new DashPlayer instance with its WebGL implementation.
-  const player = new window.DashPlayer(
+
+  // Ensure DashPlayer module is loaded
+  if (!window.DashPlayerModule || !window.DashPlayerModule.DashPlayer) {
+    console.error("[load8iHologram] DashPlayer module not found or loaded yet.");
+    return;
+  }
+  const { DashPlayer } = window.DashPlayerModule;
+
+  const dashPlayer = new DashPlayer(
     renderer,
+    scene,
     new window.DashPlayerWebGLImplementation()
   );
   console.log(`[load8iHologram] DashPlayer created. Setting up controls and render loop...`);
@@ -446,19 +465,19 @@ async function load8iHologram(scene, renderer, camera, mpdUrl, opts = {}) {
   controls.maxPolarAngle = Math.PI / 2;
   
   // Start the appropriate render loop.
-  if (player.deviceCapabilities && player.deviceCapabilities.requestVideoFrameCallback) {
-    player.attachVideoFrameCallback();
+  if (dashPlayer.deviceCapabilities && dashPlayer.deviceCapabilities.requestVideoFrameCallback) {
+    dashPlayer.attachVideoFrameCallback();
   } else {
-    player.startRenderLoop();
+    dashPlayer.startRenderLoop();
   }
   
   console.log(`[load8iHologram] Render loop started. Attempting to load manifest...`);
   
   // Load the manifest (mpdUrl) and add the resulting mesh to the scene.
   try {
-    await player.loadManifest(mpdUrl);
+    await dashPlayer.loadManifest(mpdUrl);
     console.log(`[load8iHologram] Manifest loaded successfully.`);
-    const mesh = player.mesh;
+    const mesh = dashPlayer.mesh;
     const MESH_SCALE = 1.0;
     mesh.scale.set(MESH_SCALE * 0.01, MESH_SCALE * 0.01, MESH_SCALE * 0.01);
     mesh.position.y -= MESH_SCALE * 0.75;
@@ -475,24 +494,24 @@ async function load8iHologram(scene, renderer, camera, mpdUrl, opts = {}) {
     get oncanplay() { return _oncanplay; },
     set oncanplay(callback) { 
       _oncanplay = callback;
-      if (player.mesh) {
+      if (dashPlayer.mesh) {
         callback();
       }
     },
-    player: player,
-    mesh: player.mesh,
+    player: dashPlayer,
+    mesh: dashPlayer.mesh,
     update: function(timestamp) {
       // Update controls
       controls.update();
     },
     play: function() {
-      player.play();
+      dashPlayer.play();
     },
     dispose: function() {
       // Dispose of controls and player
       controls.dispose();
-      if (player.dispose) {
-        player.dispose();
+      if (dashPlayer.dispose) {
+        dashPlayer.dispose();
       }
     }
   };
@@ -502,6 +521,17 @@ async function load8iHologram(scene, renderer, camera, mpdUrl, opts = {}) {
   
   // Exposer les contrôles pour pouvoir les désactiver plus tard
   hologram.controls = controls;
+  
+  // Save data to localStorage
+  const nodeData = {
+    mpdUrl: mpdUrl,
+    background: scene.background,
+    showFloor: floor.visible,
+    shadows: renderer.shadowMap.enabled,
+    keyframes: localData[node.id]?.keyframes || [],
+    hdrUrl: localData[node.id]?.hdrUrl || null
+  };
+  saveLocalData(node.id, nodeData);
   
   return hologram;
 }

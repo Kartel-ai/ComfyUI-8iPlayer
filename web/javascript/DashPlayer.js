@@ -1,17 +1,19 @@
-// First, load the external script dynamically
-await loadExternalScript('/DashPlayer-Dn48qdmH.js', 'module');
+// Create a global object to hold the module exports
+window.DashPlayerModule = {};
 
-try {
-    // Then, dynamically import the module
-    const module = await import('/DashPlayer-Dn48qdmH.js');
+(async () => {
+    try {
+        // Dynamically import the module from the correct path
+        const module = await import('/8i/app/lib/DashPlayer.module.js');
 
-    // Export the required members dynamically
-    export const DOT_WIDTH = module.o;
-    export const DashPlayer = module.p;
-    export const DashPlayerWebGLImplementation = module.q;
+        // Assign the exports to the global object
+        window.DashPlayerModule.DOT_WIDTH = module.o;
+        window.DashPlayerModule.DashPlayer = module.p;
+        window.DashPlayerModule.DashPlayerWebGLImplementation = module.q;
 
-    console.log("DashPlayer-Dn48qdmH.js loaded and imported successfully");
-} catch (error) {
-    console.error("Failed to import DashPlayer-Dn48qdmH.js:", error);
-}
+        console.log("DashPlayer.module.js loaded and assigned to window.DashPlayerModule");
+    } catch (error) {
+        console.error("Failed to import DashPlayer.module.js:", error);
+    }
+})();
 
