@@ -629,7 +629,7 @@ app.registerExtension({
     window.THREE = THREE;
     console.log('Set THREE globally:', window.THREE ? 'Success' : 'Failed');
     // Manually load DashPlayer as a module from the correct extension path.
-    await loadExternalScript('/extensions/ComfyUI-8iPlayer/javascript/DashPlayer-Dn48qdmH.js', 'module');
+    await loadExternalScript('/extensions/ComfyUI-8iPlayer/DashPlayer-Dn48qdmH.js', 'module');
     
   },
 
