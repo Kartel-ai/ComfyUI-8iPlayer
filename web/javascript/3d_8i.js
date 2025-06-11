@@ -764,6 +764,8 @@ app.registerExtension({
           // Function to handle both GLB and MPD loading
           const handleModelLoading = async (url, isMpd, that) => {
             let html
+            const key = '8i_3d_data';
+            let localData = getLocalData(key);
             console.log(`[handleModelLoading] Starting for ${isMpd ? 'MPD' : 'GLB'}: ${url}`);
             if (isMpd) {
               console.log("[handleModelLoading] Checking dependencies...");
