@@ -9,6 +9,10 @@ import { OrbitControls } from './OrbitControls.js'
 import { RoomEnvironment } from './RoomEnvironment.js'
 import { RGBELoader } from './RGBELoader.js'
 import { loadExternalScript, get_position_style } from './common.js'
+<<<<<<< HEAD
+=======
+import { DashPlayer, DashPlayerWebGLImplementation } from './DashPlayer.js';
+>>>>>>> parent of 0f4d88d (Update 3d_8i.js)
 
 // Set THREE globally
 window.THREE = THREE;
