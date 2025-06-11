@@ -866,10 +866,14 @@ app.registerExtension({
               
               // Create a canvas for Three.js rendering of the DashPlayer hologram
               html = `<div class="viewer-container" style="
-                width: 100%; 
-                height: 100%; 
+                width: ${that.size[0] - 48}px; 
+                height: ${that.size[1] - 88}px; 
                 position: relative; 
+                margin: 24px auto;
                 background-color: #000000;
+                display: flex;
+                justify-content: center;
+                align-items: center;
                 border-radius: 8px;
                 box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
                 overflow: hidden;
@@ -994,14 +998,17 @@ app.registerExtension({
             preview.innerHTML = html
             console.log("[handleModelLoading] Preview HTML set.");
             
-            // Update preview container styling - Simplified and fixed positioning
+            // Update preview container styling
             preview.style = `
               position: relative;
-              margin: 24px;
-              width: ${that.size[0] - 48}px;
-              height: ${that.size[1] - 88}px;
+              margin-top: 60px;
+              display: flex;
+              justify-content: center;
+              align-items: center;
               background-repeat: no-repeat;
               background-size: contain;
+              width: ${that.size[0] - 48}px;
+              height: ${that.size[1] - 88}px;
             `
             if (that.size[1] < 400) {
               that.setSize([that.size[0], that.size[1] + 300])
@@ -1756,7 +1763,10 @@ app.registerExtension({
         preview.className = 'preview'
         preview.style = ` 
           position: relative; 
-          margin: 24px;
+          margin-top: 60px;
+          display: flex;
+          justify-content: center;
+          align-items: center;
           background-repeat: no-repeat;
           background-size: contain;`
         let upload = inputDiv('_mixlab_3d_image', '3D Model')
@@ -1777,25 +1787,25 @@ app.registerExtension({
           // Hauteur = Taille totale - hauteur input MPD/Load (estimée ou fixe?) - hauteur marge - hauteur contrôles bas
           let h = that.size[1] - 150 
           
-          // Update preview container - Simplified positioning
+          // Update preview container
           preview.style = `
             position: relative;
-            margin: 24px;
-            width: ${that.size[0] - 48}px;
-            height: ${that.size[1] - 88}px;
+            margin-top: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             background-repeat: no-repeat;
             background-size: contain;
+            width: ${w}px;
+            height: ${h}px;
           `
           
           if (viewerContainer) {
             viewerContainer.style = `
-              width: 100%;
-              height: 100%;
+              width: ${w}px;
+              height: ${h}px;
               position: relative;
-              background-color: #000000;
-              border-radius: 8px;
-              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-              overflow: hidden;
+              margin: 24px auto;
             `
           }
           
