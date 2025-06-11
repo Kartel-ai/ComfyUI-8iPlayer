@@ -628,7 +628,8 @@ app.registerExtension({
     // Expose THREE globally for DashPlayer
     window.THREE = THREE;
     console.log('Set THREE globally:', window.THREE ? 'Success' : 'Failed');
-    // await loadExternalScript('/8i/app/lib/DashPlayer.js', 'module'); // This is now removed
+    // Manually load DashPlayer as a module to ensure its workers function correctly.
+    await loadExternalScript('DashPlayer-Dn48qdmH.js', 'module');
     
   },
 
