@@ -38,7 +38,7 @@ except ImportError:
     print("pip install -r requirements.txt")
     sys.exit()
 
-def is_installed(package, package_overwrite=None,auto_install=True):
+def is_installed(package, package_overwrite=None,auto_install=False):
     is_has=False
     try:
         spec = importlib.util.find_spec(package)
