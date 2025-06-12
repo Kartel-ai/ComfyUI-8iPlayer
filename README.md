@@ -115,6 +115,9 @@ Download the example workflow JSON files from the [`workflow_examples`](./workfl
     *   Workflow File: [`workflow-8i-wan-fun-1.3b-ChatGpt-v01.json`](./workflow_examples/workflow-8i-wan-fun-1.3b-ChatGpt-v01.json)
     *   ![Wan+ChatGPT Workflow Example](assets/workflow-wan-chatgpt.gif)
 
+*   **Wan 1.3b + Vace + ChatGPT:** Similar to the ChatGPT workflow but uses Vace for enhanced video processing.
+    *   Workflow File: [`workflow-8i-wan-vace-1.3b-ChatGpt-v01.json`](./workflow_examples/workflow-8i-wan-vace-1.3b-ChatGpt-v01.json)
+
 ---
 
 ## 🤔 Troubleshooting
@@ -122,7 +125,7 @@ Download the example workflow JSON files from the [`workflow_examples`](./workfl
 *   **Load/Playback Fails:**
     *   Verify MPD/HDR URL is correct and accessible (check CORS).
     *   Check browser console (F12) for errors.
-    *   Try clicking "Load MPD" again.
+    *   **If the hologram doesn't load, try clicking "Load MPD" again.** Sometimes a second click is needed for proper initialization.
 *   **Viewer Black:** Check console; ensure WebGL is enabled in your browser.
 *   **Performance:** High `frame_count`, large HDRs, and shadows can be demanding.
 
