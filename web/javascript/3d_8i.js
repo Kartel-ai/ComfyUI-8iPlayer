@@ -783,6 +783,19 @@ app.registerExtension({
           
           div.appendChild(mpdUrlContainer)
           
+          // Add help text for MPD loading
+          const helpText = document.createElement('div')
+          helpText.style = `
+            margin: 4px 24px 8px 24px;
+            width: calc(100% - 48px);
+            text-align: center;
+            color: #888;
+            font-size: 11px;
+            font-style: italic;
+          `
+          helpText.innerHTML = "💡 If the hologram doesn't load, try clicking 'Load MPD' again"
+          div.appendChild(helpText)
+          
           div.style = `
             display: flex;
             flex-direction: column;
