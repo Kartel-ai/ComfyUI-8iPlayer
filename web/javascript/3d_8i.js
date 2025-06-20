@@ -498,7 +498,6 @@ async function load8iHologram(scene, renderer, camera, mpdUrl, opts = {}) {
   // Create a new DashPlayer instance with its WebGL implementation.
   const player = new window.DashPlayer(
     renderer,
-    new window.DashPlayerWebGLImplementation()
   );
   console.log(`[load8iHologram] DashPlayer created. Setting up controls and render loop...`);
   
@@ -863,11 +862,11 @@ app.registerExtension({
             if (isMpd) {
               console.log("[handleModelLoading] Checking dependencies...");
               // First ensure THREE.js and DashPlayer are properly loaded
-              if (!window.THREE || !window.DashPlayer || !window.DashPlayerWebGLImplementation) {
+              if (!window.THREE || !window.DashPlayer) {
                 console.log("Waiting for dependencies to load...")
                 await new Promise((resolve) => {
                   const checkDeps = () => {
-                    if (window.THREE && window.DashPlayer && window.DashPlayerWebGLImplementation) {
+                    if (window.THREE && window.DashPlayer) {
                       resolve()
                     } else {
                       setTimeout(checkDeps, 100)
